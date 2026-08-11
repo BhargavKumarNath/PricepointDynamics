@@ -1,0 +1,76 @@
+# PricePoint Dynamics — Configuration
+# All paths are relative to the project root.
+
+data:
+  raw_dir: data/00_raw
+  interim_dir: data/01_interim
+  processed_dir: data/02_processed
+  external_dir: data/03_external
+  raw_files:
+    - All_Data_ASDA.csv
+    - All_Data_Aldi.csv
+    - All_Data_Morrisons.csv
+    - All_Data_Sains.csv
+    - All_Data_Tesco.csv
+
+model:
+  output_dir: models
+  model_filename: price_predictor_lgbm.joblib
+  lgbm_params:
+    objective: mae
+    n_estimators: 1000
+    learning_rate: 0.05
+    num_leaves: 63
+    min_child_samples: 100
+    subsample: 0.8
+    colsample_bytree: 0.8
+    verbose: -1
+
+features:
+  rolling_windows: [7, 14, 30]
+  lag_days: [1, 7]
+  output_filename: feature_engineered_data.parquet
+
+matching:
+  model_name: intfloat/e5-large
+  # Product matching clusters via connected components over a *bounded-degree
+  # mutual-nearest-neighbour* graph (pricepoint/product_matching.py::cluster_by_similarity),
+  # not raw pairwise thresholding -- see the function's docstring and
+  # project_v2.md ADR-0007 for why. Both values below were empirically
+  # validated against the full real 114K-name corpus (Phase 1 Progress Log,
+  # 2026-07-02): unbounded pairwise clustering chained catastrophically even
+  # at threshold 0.90 (60%+ of all names in one cluster); mutual_neighbors_k=5
+  # with threshold=0.95 avoids that failure mode and reproduces a canonical
+  # product count (~68,600) close to this project's historical figure
+  # (67,341). Changing either value requires re-validating cluster size
+  # distribution at full scale, not just on a subsample -- chaining risk
+  # grows with corpus size.
+  similarity_threshold: 0.95
+  mutual_neighbors_k: 5
+  faiss_nprobe: 10
+  output_filename: canonical_products_e5.parquet
+
+shap:
+  sample_size: 8000
+  output_dir: shap_precomputed
+  random_seed: 42
+
+market_dynamics:
+  output_dir: market_dynamics_precomputed
+  sample_size: 1000
+  max_lag_days: 7
+  min_correlation: 0.15
+  min_stores_for_common: 3
+
+anomaly:
+  contamination: 0.01
+  random_state: 42
+
+benchmarking:
+  n_iterations: 1000
+  warmup_iterations: 100
+
+logging:
+  level: INFO
+  format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+  file: null  # Set to a path to enable file logging

@@ -1,0 +1,18 @@
+# PricePoint Dynamics — Dashboard Dependencies
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+faiss-cpu
+sentence-transformers
+streamlit_agraph
+requests
+joblib
+shap
+lightgbm
+duckdb
+pyyaml
+pyarrow
+gdown

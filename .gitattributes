@@ -1,0 +1,2 @@
+# No LFS tracking — all large binary files are served via Google Drive
+# and downloaded at runtime by the dashboard.

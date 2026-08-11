@@ -1,0 +1,28 @@
+# Data — large files served from Google Drive at runtime
+data/
+*.parquet
+*.joblib
+*.npy
+
+# Precomputed artifacts — served from Google Drive
+market_dynamics_precomputed/
+shap_precomputed/
+models/
+
+# IDE & Environment
+.idea/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary / scratch files
+*.log
+
+# Agent config
+.agent/
+.claude/
