@@ -1,4 +1,4 @@
-.PHONY: setup test lint format typecheck
+.PHONY: setup test lint format typecheck benchmark
 
 setup:
 	uv sync --all-extras
@@ -16,3 +16,6 @@ format:
 
 typecheck:
 	uv run mypy src/pricepoint
+
+benchmark:
+	uv run python scripts/benchmark_phase2.py

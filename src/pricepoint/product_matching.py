@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from pricepoint.config import Settings
+from pricepoint.manifest import has_sources_changed, write_manifest
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
 from pricepoint.schemas import CANONICAL_PRODUCTS_SCHEMA
 
@@ -299,13 +300,21 @@ def find_canonical_matches(
     return df
 
 
-def run_matching(settings: Settings) -> Path:
+def run_matching(settings: Settings, force: bool = False) -> Path:
     """Execute the full product matching pipeline.
+
+    Skips re-running the (expensive: SBERT embedding + FAISS clustering)
+    matching step if the interim input hasn't changed since the last
+    successful run, per this stage's `<output>.manifest.json` sidecar --
+    unless ``force`` is set.
 
     Parameters
     ----------
     settings : Settings
         Application settings.
+    force : bool
+        If True, re-run matching even if the interim input is unchanged
+        since the last recorded manifest.
 
     Returns
     -------
@@ -315,6 +324,14 @@ def run_matching(settings: Settings) -> Path:
     interim_path = settings.data.interim_dir / "cleaned_supermarket_data.parquet"
     if not interim_path.exists():
         raise FileNotFoundError(f"Interim data not found at {interim_path}. Run ingestion first.")
+
+    output_dir = settings.data.processed_dir
+    output_path = output_dir / settings.matching.output_filename
+    manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")
+
+    if not force and output_path.exists() and not has_sources_changed([interim_path], manifest_path):
+        logger.info("Interim data unchanged since last run; skipping matching. Output: %s", output_path)
+        return output_path
 
     logger.info("Loading interim data from %s …", interim_path)
     df = pd.read_parquet(interim_path, engine="pyarrow")
@@ -327,13 +344,13 @@ def run_matching(settings: Settings) -> Path:
     df = CANONICAL_PRODUCTS_SCHEMA.validate(df, lazy=False)
     logger.info("Validation passed. ✓")
 
-    output_dir = settings.data.processed_dir
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / settings.matching.output_filename
 
     logger.info("Writing canonical products to %s …", output_path)
     df.to_parquet(output_path, compression="snappy", index=False)
     logger.info("Product matching complete. Output: %s", output_path)
+
+    write_manifest(output_path, df, [interim_path], stage="product_matching")
 
     del df
     collect_garbage()

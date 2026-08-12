@@ -33,33 +33,36 @@ def _init() -> Settings:
     return settings
 
 
+_FORCE_OPTION = typer.Option(False, "--force", "-f", help="Re-run even if inputs are unchanged since the last run.")
+
+
 @app.command()
-def ingest() -> None:
+def ingest(force: bool = _FORCE_OPTION) -> None:
     """Run data ingestion: load raw CSVs → clean → validate → Parquet."""
     from pricepoint.data_ingestion import run_ingestion
 
     settings = _init()
-    path = run_ingestion(settings)
+    path = run_ingestion(settings, force=force)
     typer.echo(f"✓ Ingestion complete → {path}")
 
 
 @app.command()
-def match() -> None:
+def match(force: bool = _FORCE_OPTION) -> None:
     """Run semantic product matching (Sentence-BERT + FAISS)."""
     from pricepoint.product_matching import run_matching
 
     settings = _init()
-    path = run_matching(settings)
+    path = run_matching(settings, force=force)
     typer.echo(f"✓ Product matching complete → {path}")
 
 
 @app.command()
-def features() -> None:
+def features(force: bool = _FORCE_OPTION) -> None:
     """Run feature engineering (rolling stats, lags, competitive)."""
     from pricepoint.feature_engineering import run_feature_engineering
 
     settings = _init()
-    path = run_feature_engineering(settings)
+    path = run_feature_engineering(settings, force=force)
     typer.echo(f"✓ Feature engineering complete → {path}")
 
 

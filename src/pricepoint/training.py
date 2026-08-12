@@ -6,7 +6,9 @@ serialization.
 
 from __future__ import annotations
 
+import json
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
@@ -15,6 +17,7 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from pricepoint.config import Settings
+from pricepoint.manifest import get_git_sha
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
 
 logger = logging.getLogger(__name__)
@@ -226,6 +229,21 @@ def run_training(settings: Settings) -> Path:
 
     logger.info("Saving model to %s …", model_path)
     joblib.dump(model, model_path)
+
+    metrics_path = output_dir / "metrics.json"
+    metrics_record = {
+        **metrics,
+        "n_train_rows": len(X_train),
+        "n_test_rows": len(X_test),
+        "n_features": X_train.shape[1],
+        "lgbm_params": settings.model.lgbm_params,
+        "git_sha": get_git_sha(),
+        "trained_at": datetime.now(UTC).isoformat(),
+    }
+    with open(metrics_path, "w", encoding="utf-8") as fh:
+        json.dump(metrics_record, fh, indent=2)
+    logger.info("Wrote metrics to %s", metrics_path)
+
     logger.info("Training pipeline complete. MAE=£%.2f, RMSE=£%.2f", metrics["MAE"], metrics["RMSE"])
 
     return model_path

@@ -14,6 +14,7 @@ authors = [{ name = "Bhargav Kumar Nath" }]
 dependencies = [
     "pandas",
     "numpy<2",
+    "polars",
     "pyyaml",
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
@@ -48,6 +49,14 @@ dev = [
     "pre-commit",
     "detect-secrets",
     "types-PyYAML",
+]
+# Only needed for scripts/download_raw_data.py, a one-off acquisition
+# utility outside the core pipeline -- kept out of the main dependency
+# list so a plain `uv sync`/`pip install -e .` doesn't pull in a package
+# nothing else in src/pricepoint imports. Install with
+# `uv sync --extra kaggle` or `pip install -e ".[kaggle]"`.
+kaggle = [
+    "kaggle",
 ]
 
 [tool.hatch.build.targets.wheel]

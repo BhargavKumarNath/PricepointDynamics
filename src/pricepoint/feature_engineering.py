@@ -11,13 +11,16 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import polars as pl
 
 from pricepoint.config import Settings
-from pricepoint.manifest import write_manifest
+from pricepoint.manifest import has_sources_changed, write_manifest
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
 from pricepoint.schemas import FEATURE_DATA_SCHEMA
 
 logger = logging.getLogger(__name__)
+
+_GROUP_COLS = ["canonical_name", "supermarket"]
 
 
 def add_temporal_features(
@@ -26,6 +29,25 @@ def add_temporal_features(
     lag_days: list[int],
 ) -> pd.DataFrame:
     """Add rolling statistics and lag features.
+
+    The rolling/lag core is computed in Polars (native, multi-threaded
+    rolling-window expressions) rather than pandas'
+    ``groupby().transform(lambda x: x.rolling(...))`` -- the latter invokes
+    a Python-level lambda once per group per statistic (4 stats x N window
+    sizes separate full passes), which dominates feature-engineering
+    runtime on the full 9.5M-row dataset (project_refactor.md §1/§6/Phase
+    2). The public signature (pandas in, pandas out) is unchanged so
+    callers and existing tests are unaffected; the conversion to pandas
+    happens once, at the end of this function, consistent with the
+    "convert to pandas only at the sklearn/LightGBM/Pandera boundary"
+    principle applied elsewhere in this pipeline.
+
+    Rolling windows are **row-count-based** (the last ``window`` rows
+    within a (canonical_name, supermarket) group, not the last ``window``
+    calendar days) -- this matches the pre-existing pandas
+    ``.rolling(window)`` behaviour exactly (verified: both frameworks
+    default to positional, not time-based, windows), including on groups
+    with gaps in their date sequence.
 
     Parameters
     ----------
@@ -39,40 +61,40 @@ def add_temporal_features(
     Returns
     -------
     pd.DataFrame
-        Data with new temporal columns.
+        Data with new temporal columns, sorted by
+        ``[canonical_name, supermarket, date]`` (matching this function's
+        pre-Polars-rewrite behaviour -- rolling/lag statistics are only
+        meaningful in that row order, so the sort is load-bearing, not
+        incidental).
     """
     logger.info("Adding temporal features (windows=%s, lags=%s) …", rolling_windows, lag_days)
-    df = df.sort_values(["canonical_name", "supermarket", "date"]).copy()
+    df = df.sort_values(_GROUP_COLS + ["date"]).reset_index(drop=True)
 
-    group_cols = ["canonical_name", "supermarket"]
+    pl_prices = pl.from_pandas(df[[*_GROUP_COLS, "prices"]])
 
+    exprs: list[pl.Expr] = []
     for window in rolling_windows:
-        grp = df.groupby(group_cols, observed=True)["prices"]
-        # ruff's B023 ("function uses loop variable") is a false positive
-        # here: each lambda is passed straight into `.transform()` and both
-        # called and discarded within this same loop iteration, never
-        # stored for later -- there is no closure that outlives `window`'s
-        # current value, which is what B023 actually guards against.
-        df[f"price_rol_mean_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).mean()  # noqa: B023
+        exprs.append(
+            pl.col("prices").rolling_mean(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_mean_{window}d")
         )
-        df[f"price_rol_std_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).std()  # noqa: B023
+        exprs.append(
+            pl.col("prices").rolling_std(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_std_{window}d")
         )
-        df[f"price_rol_max_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).max()  # noqa: B023
+        exprs.append(
+            pl.col("prices").rolling_max(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_max_{window}d")
         )
-        df[f"price_rol_min_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).min()  # noqa: B023
+        exprs.append(
+            pl.col("prices").rolling_min(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_min_{window}d")
         )
 
     for lag in lag_days:
-        df[f"price_lag_{lag}d"] = df.groupby(group_cols, observed=True)["prices"].shift(lag)
+        exprs.append(pl.col("prices").shift(lag).over(_GROUP_COLS).alias(f"price_lag_{lag}d"))
 
     # Momentum: daily price change
-    df["price_diff_1d"] = df.groupby(group_cols, observed=True)["prices"].diff(1)
+    exprs.append(pl.col("prices").diff(1).over(_GROUP_COLS).alias("price_diff_1d"))
 
-    return df
+    new_cols = pl_prices.select(exprs).to_pandas()
+    return pd.concat([df, new_cols], axis=1)
 
 
 def add_competitive_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -166,13 +188,20 @@ def add_cyclical_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def run_feature_engineering(settings: Settings) -> Path:
+def run_feature_engineering(settings: Settings, force: bool = False) -> Path:
     """Execute the full feature engineering pipeline.
+
+    Skips re-running feature engineering if the canonical products input
+    hasn't changed since the last successful run, per this stage's
+    `<output>.manifest.json` sidecar -- unless ``force`` is set.
 
     Parameters
     ----------
     settings : Settings
         Application settings.
+    force : bool
+        If True, re-run feature engineering even if the canonical
+        products input is unchanged since the last recorded manifest.
 
     Returns
     -------
@@ -182,6 +211,15 @@ def run_feature_engineering(settings: Settings) -> Path:
     canonical_path = settings.data.processed_dir / settings.matching.output_filename
     if not canonical_path.exists():
         raise FileNotFoundError(f"Canonical products not found at {canonical_path}. Run matching first.")
+
+    output_path = settings.data.processed_dir / settings.features.output_filename
+    manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")
+
+    if not force and output_path.exists() and not has_sources_changed([canonical_path], manifest_path):
+        logger.info(
+            "Canonical products unchanged since last run; skipping feature engineering. Output: %s", output_path
+        )
+        return output_path
 
     logger.info("Loading canonical products from %s …", canonical_path)
     df = pd.read_parquet(canonical_path, engine="pyarrow")
@@ -211,9 +249,7 @@ def run_feature_engineering(settings: Settings) -> Path:
     df = FEATURE_DATA_SCHEMA.validate(df, lazy=False)
     logger.info("Validation passed. ✓")
 
-    output_dir = settings.data.processed_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / settings.features.output_filename
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     logger.info("Writing feature data to %s …", output_path)
     df.to_parquet(output_path, compression="snappy", index=False)

@@ -109,12 +109,12 @@ def has_sources_changed(
     return False
 
 
-def _get_git_sha() -> str | None:
+def get_git_sha() -> str | None:
     """Best-effort git SHA of the current checkout.
 
     Returns ``None`` (rather than raising) outside a git repo or if git is
-    unavailable -- manifest generation must never break the pipeline it's
-    describing.
+    unavailable -- artifact traceability (manifests, metrics.json) must
+    never break the pipeline stage it's describing.
     """
     try:
         result = subprocess.run(
@@ -126,7 +126,7 @@ def _get_git_sha() -> str | None:
         )
         return result.stdout.strip()
     except Exception:  # noqa: BLE001
-        logger.warning("Could not determine git SHA for manifest (not a git repo?).")
+        logger.warning("Could not determine git SHA (not a git repo?).")
         return None
 
 
@@ -177,7 +177,7 @@ def write_manifest(
         "columns": list(df.columns),
         "schema_hash": _schema_hash(df),
         "source_files": [str(p) for p in source_files],
-        "git_sha": _get_git_sha(),
+        "git_sha": get_git_sha(),
         "generated_at": datetime.now(UTC).isoformat(),
     }
 

@@ -15,11 +15,14 @@ project_v2.md Progress Log, 2026-07-02):
 
 from __future__ import annotations
 
+import json
+
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
 
-from pricepoint.training import evaluate_model, prepare_training_data, train_model
+from pricepoint.training import evaluate_model, prepare_training_data, run_training, train_model
 
 
 @pytest.fixture
@@ -117,3 +120,65 @@ class TestTrainingPipeline:
         assert metrics["RMSE"] >= 0
         # R² can be NaN, negative, or positive depending on data; just verify it's a number
         assert isinstance(metrics["R2"], (int, float))
+
+
+class _FakeDataConfig:
+    def __init__(self, processed_dir):
+        self.processed_dir = processed_dir
+
+
+class _FakeFeaturesConfig:
+    output_filename = "feature_engineered_data.parquet"
+
+
+class _FakeModelConfig:
+    def __init__(self, output_dir):
+        self.output_dir = output_dir
+        self.model_filename = "price_predictor_lgbm.joblib"
+        self.lgbm_params = {"n_estimators": 10, "random_state": 42}
+
+    @property
+    def model_path(self):
+        return self.output_dir / self.model_filename
+
+
+class _FakeTrainingSettings:
+    def __init__(self, processed_dir, model_dir):
+        self.data = _FakeDataConfig(processed_dir)
+        self.features = _FakeFeaturesConfig()
+        self.model = _FakeModelConfig(model_dir)
+
+
+class TestRunTrainingArtifacts:
+    """Integration tests for run_training's artifact outputs -- Phase 1's
+    task list explicitly called for `metrics.json` to be written alongside
+    the model, which the original implementation computed but never
+    persisted (only logged)."""
+
+    @pytest.fixture
+    def settings(self, tmp_path, feature_df):
+        processed_dir = tmp_path / "processed"
+        processed_dir.mkdir()
+        feature_df.to_parquet(processed_dir / "feature_engineered_data.parquet")
+        model_dir = tmp_path / "models"
+        return _FakeTrainingSettings(processed_dir=processed_dir, model_dir=model_dir)
+
+    def test_model_and_metrics_written(self, settings):
+        model_path = run_training(settings)
+        assert model_path.exists()
+
+        metrics_path = settings.model.output_dir / "metrics.json"
+        assert metrics_path.exists()
+        metrics = json.loads(metrics_path.read_text())
+        for key in ("MAE", "RMSE", "R2", "n_train_rows", "n_test_rows", "n_features", "lgbm_params", "trained_at"):
+            assert key in metrics, f"metrics.json missing expected key {key!r}"
+
+    def test_saved_model_reloads_and_predicts(self, settings):
+        model_path = run_training(settings)
+        model = joblib.load(model_path)
+
+        saved_feature_df = pd.read_parquet(settings.data.processed_dir / "feature_engineered_data.parquet")
+        _, _, X_test, _ = prepare_training_data(saved_feature_df)
+        preds = model.predict(X_test.reindex(columns=model.feature_name_, fill_value=0))
+        assert len(preds) == len(X_test)
+        assert np.all(np.isfinite(preds))

@@ -1,24 +1,13 @@
 #!/usr/bin/env python3
 """Download raw supermarket price data from Kaggle.
 
-This script uses the Kaggle API to download the dataset containing raw
-supermarket price CSVs. Requires a valid Kaggle API token configured at
-~/.kaggle/kaggle.json.
-
-Setup:
-    1. Install kaggle: pip install kaggle
-    2. Get an API key from https://www.kaggle.com/account
-    3. Save it to ~/.kaggle/kaggle.json
-    4. Ensure permissions: chmod 600 ~/.kaggle/kaggle.json
-    5. Run: python scripts/download_raw_data.py
-
-Environment variable override:
-    KAGGLE_USERNAME and KAGGLE_KEY can be set instead of using the config file.
+This script uses the Kaggle API to download this project's raw retailer
+CSVs. Requires Kaggle API credentials
 """
 
 from __future__ import annotations
 
-import json
+import argparse
 import logging
 import os
 import sys
@@ -36,48 +25,7 @@ def get_project_root() -> Path:
     raise FileNotFoundError("Could not locate project root (pyproject.toml not found)")
 
 
-def setup_kaggle_api() -> None:
-    """Verify Kaggle API credentials are available.
-
-    Raises
-    ------
-    FileNotFoundError
-        If neither env vars nor ~/.kaggle/kaggle.json are configured.
-    RuntimeError
-        If the API token is invalid.
-    """
-    kaggle_dir = Path.home() / ".kaggle"
-    kaggle_json = kaggle_dir / "kaggle.json"
-
-    # Check env vars first (higher priority)
-    if os.getenv("KAGGLE_USERNAME") and os.getenv("KAGGLE_KEY"):
-        logger.info("Using Kaggle credentials from environment variables.")
-        return
-
-    # Check config file
-    if not kaggle_json.exists():
-        raise FileNotFoundError(
-            f"Kaggle API credentials not found at {kaggle_json}.\n"
-            "Setup instructions:\n"
-            "  1. Go to https://www.kaggle.com/account\n"
-            "  2. Click 'Create new token' to download kaggle.json\n"
-            "  3. Place it at ~/.kaggle/kaggle.json\n"
-            "  4. Run: chmod 600 ~/.kaggle/kaggle.json"
-        )
-
-    logger.info("Using Kaggle credentials from %s", kaggle_json)
-
-    # Verify the JSON is valid
-    try:
-        with open(kaggle_json) as f:
-            creds = json.load(f)
-            if not all(k in creds for k in ["username", "key"]):
-                raise ValueError("Missing 'username' or 'key' in kaggle.json")
-    except (json.JSONDecodeError, ValueError) as e:
-        raise RuntimeError(f"Invalid Kaggle credentials file: {e}") from e
-
-
-def download_dataset(output_dir: Path, dataset: str = "bhargavkumarnath/uk-supermarket-prices") -> None:
+def download_dataset(output_dir: Path, dataset: str) -> None:
     """Download the Kaggle dataset to the specified directory.
 
     Parameters
@@ -85,7 +33,7 @@ def download_dataset(output_dir: Path, dataset: str = "bhargavkumarnath/uk-super
     output_dir : Path
         Directory to download files to (will be created if needed).
     dataset : str
-        Kaggle dataset identifier in format 'username/dataset-name'.
+        Kaggle dataset identifier in format 'owner/dataset-name'.
 
     Raises
     ------
@@ -95,15 +43,19 @@ def download_dataset(output_dir: Path, dataset: str = "bhargavkumarnath/uk-super
     try:
         from kaggle.api.kaggle_api_extended import KaggleApi
     except ImportError:
-        raise ImportError("kaggle package not installed. Install it with: pip install kaggle") from None
+        raise ImportError("kaggle package not installed. Install it with: uv sync --extra kaggle") from None
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("Connecting to Kaggle API …")
     api = KaggleApi()
+    # authenticate() tries access token -> legacy key -> OAuth -> anonymous
+    # (see this module's docstring); on total failure it prints its own
+    # setup instructions and calls sys.exit(1) itself, so no separate
+    # credential pre-check is maintained here.
     api.authenticate()
-    logger.info("Kaggle API authenticated. ✓")
+    logger.info("Kaggle API authenticated as %s. ✓", api.config_values.get("username", "?"))
 
     logger.info("Downloading dataset '%s' to %s …", dataset, output_dir)
     api.dataset_download_files(
@@ -156,18 +108,37 @@ def _count_rows(csv_path: Path) -> int:
         return -1
 
 
+_VERIFIED_DEFAULT_DATASET = "declanmcalinden/time-series-uk-supermarket-data"
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Download this project's raw retailer CSVs from Kaggle.",
+    )
+    parser.add_argument(
+        "--dataset",
+        default=os.getenv("KAGGLE_DATASET_SLUG", _VERIFIED_DEFAULT_DATASET),
+        help="Kaggle dataset identifier, 'owner/dataset-name' "
+        f"(or set KAGGLE_DATASET_SLUG). Default: {_VERIFIED_DEFAULT_DATASET} "
+        "-- see this script's module docstring for how that default was verified.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
     """Main entry point."""
+    args = _parse_args()
+
     project_root = get_project_root()
     output_dir = project_root / "data" / "00_raw"
 
     logger.info("PricePoint Dynamics — Kaggle Dataset Downloader")
     logger.info("Project root: %s", project_root)
     logger.info("Output directory: %s", output_dir)
+    logger.info("Dataset: %s", args.dataset)
 
     try:
-        setup_kaggle_api()
-        download_dataset(output_dir)
+        download_dataset(output_dir, dataset=args.dataset)
         extract_and_validate(output_dir)
         logger.info("✓ All data downloaded and ready for ingestion.")
     except (FileNotFoundError, RuntimeError, ImportError) as e:

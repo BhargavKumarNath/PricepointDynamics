@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import math
+import time
 
 import numpy as np
+import pandas as pd
+import pytest
 
-from pricepoint.product_matching import cluster_by_similarity, normalise_product_name
+import pricepoint.product_matching as product_matching_module
+from pricepoint.product_matching import cluster_by_similarity, normalise_product_name, run_matching
 
 
 class TestNormaliseProductName:
@@ -223,3 +228,103 @@ class TestClusterBySimilarity:
         # (tied) petal-to-hub similarities -- the invariant under test is
         # "bounded", not an exact count.
         assert hub_cluster_size <= 5 + 3
+
+
+class _FakeDataConfig:
+    def __init__(self, interim_dir, processed_dir):
+        self.interim_dir = interim_dir
+        self.processed_dir = processed_dir
+
+
+class _FakeMatchingConfig:
+    def __init__(self, output_filename="canonical_products_e5.parquet"):
+        self.output_filename = output_filename
+
+
+class _FakeMatchingSettings:
+    def __init__(self, interim_dir, processed_dir):
+        self.data = _FakeDataConfig(interim_dir, processed_dir)
+        self.matching = _FakeMatchingConfig()
+
+
+def _fake_matched_output(df: pd.DataFrame, settings) -> pd.DataFrame:
+    """Stand-in for find_canonical_matches: skips SBERT/FAISS entirely,
+    returning a small CANONICAL_PRODUCTS_SCHEMA-conformant frame so
+    run_matching's own validate-and-write logic can be exercised for
+    real."""
+    return pd.DataFrame(
+        {
+            "canonical_name": ["bananas", "milk"],
+            "supermarket": ["Tesco", "ASDA"],
+            "prices": [1.0, 1.2],
+            "date": pd.to_datetime(["2024-01-01", "2024-01-01"]),
+            "own_brand": [False, True],
+        }
+    )
+
+
+class TestRunMatchingSkipIfUnchanged:
+    """Integration tests for run_matching's manifest-based skip-if-unchanged
+    wiring (product_matching.py previously never wrote a manifest at all,
+    so this behaviour could not have worked before this fix). The
+    expensive SBERT/FAISS step (find_canonical_matches) is monkeypatched
+    out -- these tests are about the skip/force/manifest wiring around it,
+    not the matching algorithm itself (covered by TestClusterBySimilarity)."""
+
+    @pytest.fixture(autouse=True)
+    def _stub_matching(self, monkeypatch):
+        monkeypatch.setattr(product_matching_module, "find_canonical_matches", _fake_matched_output)
+
+    @pytest.fixture
+    def settings(self, tmp_path):
+        interim_dir = tmp_path / "interim"
+        interim_dir.mkdir()
+        pd.DataFrame({"product_name": ["a", "b"]}).to_parquet(interim_dir / "cleaned_supermarket_data.parquet")
+        processed_dir = tmp_path / "processed"
+        return _FakeMatchingSettings(interim_dir=interim_dir, processed_dir=processed_dir)
+
+    def test_writes_manifest_on_first_run(self, settings):
+        """product_matching.py previously wrote no manifest at all --
+        has_sources_changed() could never find one to compare against."""
+        output_path = run_matching(settings)
+        manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text())
+        assert manifest["stage"] == "product_matching"
+
+    def test_second_run_skips_when_unchanged(self, settings, monkeypatch):
+        first_path = run_matching(settings)
+        assert first_path.exists()
+
+        def _fail_if_called(*args, **kwargs):
+            raise AssertionError("find_canonical_matches was called on an unchanged re-run; skip logic did not trigger")
+
+        monkeypatch.setattr(product_matching_module, "find_canonical_matches", _fail_if_called)
+
+        second_path = run_matching(settings)
+        assert second_path == first_path
+
+    def test_force_reruns_even_when_unchanged(self, settings, monkeypatch):
+        run_matching(settings)
+
+        calls = []
+        monkeypatch.setattr(
+            product_matching_module,
+            "find_canonical_matches",
+            lambda *a, **kw: (calls.append(1), _fake_matched_output(*a, **kw))[1],
+        )
+
+        run_matching(settings, force=True)
+        assert len(calls) == 1, "force=True must re-run matching even when the interim input is unchanged"
+
+    def test_reruns_when_interim_data_modified(self, settings):
+        first_path = run_matching(settings)
+        first_manifest = json.loads(first_path.with_suffix(first_path.suffix + ".manifest.json").read_text())
+
+        time.sleep(0.01)
+        interim_path = settings.data.interim_dir / "cleaned_supermarket_data.parquet"
+        pd.DataFrame({"product_name": ["a", "b", "c"]}).to_parquet(interim_path)
+
+        second_path = run_matching(settings)
+        second_manifest = json.loads(second_path.with_suffix(second_path.suffix + ".manifest.json").read_text())
+        assert second_manifest["generated_at"] != first_manifest["generated_at"]
