@@ -163,6 +163,7 @@ def _measure(fn, *args, **kwargs) -> tuple[float, float, int]:
 
 # OLD reference implementations (pre-Phase-2, frozen here for comparison only)
 
+
 def _old_load_and_clean_ingestion(raw_dir: Path, raw_files: list[str]) -> pd.DataFrame:
     frames = []
     for filename in raw_files:
@@ -252,6 +253,7 @@ def _old_compute_price_leadership(
 
 
 # Benchmark runners
+
 
 def benchmark_ingestion() -> BenchmarkResult:
     print("\n=== Benchmark 1/3: CSV ingestion (real 791MB raw data) ===")

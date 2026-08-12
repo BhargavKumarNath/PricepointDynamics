@@ -121,6 +121,7 @@ def _measure(fn, *args, **kwargs) -> tuple[float, float, int]:
 
 # OLD reference implementations (pandas-in-Streamlit, frozen here for comparison only)
 
+
 def _old_market_overview(canonical_path: str) -> pd.DataFrame:
     """Mirrors dashboard/pages/01_market_overview.py's
     `df.groupby('supermarket')` aggregates, computed after loading the
@@ -181,6 +182,7 @@ def _new_market_overview(marts_dir: str) -> pd.DataFrame:
 def _new_basket_cost(marts_dir: str, basket_items: list[str]) -> pd.DataFrame:
     with Warehouse(Path(marts_dir)) as wh:
         return wh.get_basket_cost(basket_items)
+
 
 # Benchmark runners
 def benchmark_market_overview(canonical_path: Path, marts_dir: Path) -> BenchmarkResult:
