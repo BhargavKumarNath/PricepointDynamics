@@ -24,10 +24,20 @@ def detect_anomalies(
 ) -> pd.DataFrame:
     """Run Isolation Forest anomaly detection on price data.
 
+    Uses a curated feature set that captures price-level anomalies:
+    - prices: the target variable
+    - price_diff_1d: day-over-day change (captures sudden jumps)
+    - price_rol_std_7d: 7-day rolling volatility (captures erratic pricing)
+    - price_vs_market_avg: deviation from market (captures competitive anomalies)
+
+    This is more interpretable and robust than using all numeric features,
+    which would include categorical embeddings, row indices, and other
+    features unrelated to pricing anomalies.
+
     Parameters
     ----------
     df : pd.DataFrame
-        Feature-engineered data with numeric columns.
+        Feature-engineered data with the expected feature columns.
     contamination : float
         Expected proportion of anomalies.
     random_state : int
@@ -44,8 +54,20 @@ def detect_anomalies(
         f"{len(df):,}",
     )
 
-    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-    X = df[numeric_cols].dropna()
+    # Curated feature set for price anomaly detection
+    anomaly_features = ["prices", "price_diff_1d", "price_rol_std_7d", "price_vs_market_avg"]
+
+    # Check that all features exist
+    missing_features = [f for f in anomaly_features if f not in df.columns]
+    if missing_features:
+        raise ValueError(
+            f"Feature-engineered data missing required anomaly-detection columns: {missing_features}. "
+            "Ensure feature engineering ran successfully before anomaly detection."
+        )
+
+    # Select only the curated features and drop rows with NaN in any of them
+    X = df[anomaly_features].dropna()
+    logger.info("Selected %d rows with complete anomaly feature values.", len(X))
 
     iso_forest = IsolationForest(
         contamination=contamination,

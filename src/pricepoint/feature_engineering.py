@@ -15,6 +15,7 @@ import pandas as pd
 from pricepoint.config import Settings
 from pricepoint.manifest import write_manifest
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
+from pricepoint.schemas import FEATURE_DATA_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +205,11 @@ def run_feature_engineering(settings: Settings) -> Path:
     df = add_cyclical_features(df)
     downcast_dtypes(df)
     log_memory("after cyclical features")
+
+    # Validate against the feature data schema before persisting
+    logger.info("Validating against FEATURE_DATA_SCHEMA …")
+    df = FEATURE_DATA_SCHEMA.validate(df, lazy=False)
+    logger.info("Validation passed. ✓")
 
     output_dir = settings.data.processed_dir
     output_dir.mkdir(parents=True, exist_ok=True)

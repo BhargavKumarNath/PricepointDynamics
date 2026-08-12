@@ -11,11 +11,13 @@ of data_ingestion.py::run_ingestion and feature_engineering.py::run_feature_engi
 from __future__ import annotations
 
 import json
+import time
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 import pytest
 
-from pricepoint.manifest import write_manifest
+from pricepoint.manifest import has_sources_changed, load_manifest, write_manifest
 
 
 @pytest.fixture
@@ -69,3 +71,94 @@ class TestWriteManifest:
         manifest_b = json.loads(write_manifest(path_b, sample_df.copy(), [], stage="test").read_text(encoding="utf-8"))
 
         assert manifest_a["schema_hash"] == manifest_b["schema_hash"]
+
+
+class TestLoadManifest:
+    """Tests for load_manifest function."""
+
+    def test_load_existing_manifest(self, tmp_path):
+        """Load a valid manifest file."""
+        manifest_data = {
+            "stage": "test",
+            "output_file": "test.parquet",
+            "row_count": 100,
+            "schema_hash": "abc123",
+        }
+        manifest_path = tmp_path / "test.manifest.json"
+        with open(manifest_path, "w") as f:
+            json.dump(manifest_data, f)
+
+        result = load_manifest(manifest_path)
+        assert result is not None
+        assert result["stage"] == "test"
+        assert result["row_count"] == 100
+
+    def test_load_nonexistent_manifest(self, tmp_path):
+        """Return None for a manifest that doesn't exist."""
+        manifest_path = tmp_path / "nonexistent.manifest.json"
+        result = load_manifest(manifest_path)
+        assert result is None
+
+    def test_load_invalid_json(self, tmp_path):
+        """Return None for an invalid JSON manifest."""
+        manifest_path = tmp_path / "invalid.manifest.json"
+        with open(manifest_path, "w") as f:
+            f.write("{invalid json")
+
+        result = load_manifest(manifest_path)
+        assert result is None
+
+
+class TestHasSourcesChanged:
+    """Tests for has_sources_changed function."""
+
+    def test_no_manifest_means_sources_changed(self, tmp_path):
+        """If no manifest exists, sources are considered changed."""
+        source = tmp_path / "source.parquet"
+        source.write_text("test data")
+        manifest = tmp_path / "test.manifest.json"
+
+        assert has_sources_changed([source], manifest) is True
+
+    def test_unchanged_sources(self, tmp_path):
+        """If source files haven't been modified, sources are unchanged."""
+        source = tmp_path / "source.parquet"
+        source.write_text("test data")
+        manifest = tmp_path / "test.manifest.json"
+
+        # Write a manifest with a future timestamp (newer than the source)
+        manifest_data = {
+            "stage": "test",
+            "source_files": [str(source)],
+            "generated_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
+        }
+        with open(manifest, "w") as f:
+            json.dump(manifest_data, f)
+
+        # Sleep briefly to ensure timestamps differ
+        time.sleep(0.01)
+
+        # Source is older than manifest, so unchanged
+        assert has_sources_changed([source], manifest) is False
+
+    def test_modified_source_detected(self, tmp_path):
+        """If a source file is modified after the manifest, sources are changed."""
+        source = tmp_path / "source.parquet"
+        source.write_text("original data")
+        manifest = tmp_path / "test.manifest.json"
+
+        # Write a manifest with a past timestamp
+        manifest_data = {
+            "stage": "test",
+            "source_files": [str(source)],
+            "generated_at": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+        }
+        with open(manifest, "w") as f:
+            json.dump(manifest_data, f)
+
+        # Sleep to ensure timestamps differ, then modify the source
+        time.sleep(0.01)
+        source.write_text("modified data")
+
+        # Source is newer than manifest, so changed
+        assert has_sources_changed([source], manifest) is True

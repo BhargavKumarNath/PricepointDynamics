@@ -15,14 +15,12 @@ import pandas as pd
 
 from pricepoint.config import Settings
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
+from pricepoint.schemas import CANONICAL_PRODUCTS_SCHEMA
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
 # Text normalisation (migrated from src/data_processing.py)
-# ---------------------------------------------------------------------------
-
 _BRANDS_TO_REMOVE = frozenset(["tesco", "asda", "sainsburys", "saintsburys", "morrisons", "aldi"])
 
 _UNIT_PATTERN = re.compile(
@@ -64,11 +62,7 @@ def normalise_product_name(name: str | None) -> str:
     return name
 
 
-# ---------------------------------------------------------------------------
 # Embedding & matching pipeline
-# ---------------------------------------------------------------------------
-
-
 def generate_embeddings(
     product_names: pd.Series,
     model_name: str = "intfloat/e5-large",
@@ -327,6 +321,11 @@ def run_matching(settings: Settings) -> Path:
     downcast_dtypes(df)
 
     df = find_canonical_matches(df, settings)
+
+    # Validate against the canonical products schema before persisting
+    logger.info("Validating against CANONICAL_PRODUCTS_SCHEMA …")
+    df = CANONICAL_PRODUCTS_SCHEMA.validate(df, lazy=False)
+    logger.info("Validation passed. ✓")
 
     output_dir = settings.data.processed_dir
     output_dir.mkdir(parents=True, exist_ok=True)

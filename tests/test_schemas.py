@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandera
 import pytest
 
-from pricepoint.schemas import CANONICAL_PRODUCTS_SCHEMA, RAW_DATA_SCHEMA
+from pricepoint.schemas import CANONICAL_PRODUCTS_SCHEMA, FEATURE_DATA_SCHEMA, RAW_DATA_SCHEMA
 
 
 class TestRawDataSchema:
@@ -58,3 +58,25 @@ class TestCanonicalProductsSchema:
         df.loc[0, "prices"] = -5.0
         with pytest.raises((pandera.errors.SchemaError, pandera.errors.SchemaErrors)):
             CANONICAL_PRODUCTS_SCHEMA.validate(df, lazy=True)
+
+
+class TestFeatureDataSchema:
+    """Tests for FEATURE_DATA_SCHEMA."""
+
+    def test_valid_data_passes(self, sample_feature_df):
+        result = FEATURE_DATA_SCHEMA.validate(sample_feature_df)
+        assert len(result) == 6
+
+    def test_required_features_present(self, sample_feature_df):
+        """Ensure all required feature columns are present."""
+        required_cols = ["price_lag_1d", "price_rol_mean_7d", "price_rol_max_7d", "price_rol_min_7d", "price_diff_1d"]
+        for col in required_cols:
+            assert col in sample_feature_df.columns
+
+    def test_missing_key_feature_still_passes(self, sample_feature_df):
+        """Schema is not strict, so extra/missing columns are OK as long as required ones are present."""
+        # Drop an extra column not in the schema requirements
+        df = sample_feature_df.drop(columns=["day_of_week_sin"])
+        # Should still pass since the required features are present
+        result = FEATURE_DATA_SCHEMA.validate(df)
+        assert len(result) == 6
