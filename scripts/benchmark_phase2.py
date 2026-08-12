@@ -161,10 +161,7 @@ def _measure(fn, *args, **kwargs) -> tuple[float, float, int]:
     return elapsed, rss_delta_mb, row_count
 
 
-# ---------------------------------------------------------------------------
 # OLD reference implementations (pre-Phase-2, frozen here for comparison only)
-# ---------------------------------------------------------------------------
-
 
 def _old_load_and_clean_ingestion(raw_dir: Path, raw_files: list[str]) -> pd.DataFrame:
     frames = []
@@ -254,10 +251,7 @@ def _old_compute_price_leadership(
     return result_df[result_df["median_lag_days"] != 0].copy()
 
 
-# ---------------------------------------------------------------------------
 # Benchmark runners
-# ---------------------------------------------------------------------------
-
 
 def benchmark_ingestion() -> BenchmarkResult:
     print("\n=== Benchmark 1/3: CSV ingestion (real 791MB raw data) ===")
@@ -410,11 +404,7 @@ def benchmark_price_leadership() -> BenchmarkResult:
     )
 
 
-# ---------------------------------------------------------------------------
 # Reporting
-# ---------------------------------------------------------------------------
-
-
 def write_markdown_report(results: list[BenchmarkResult], output_path: Path) -> None:
     lines = [
         "# Phase 2 Performance Benchmarks",

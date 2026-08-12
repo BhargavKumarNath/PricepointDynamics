@@ -10,9 +10,7 @@ from __future__ import annotations
 import pandera.pandas as pa
 from pandera.pandas import Column, DataFrameSchema
 
-# ---------------------------------------------------------------------------
 # Raw ingestion schema — applied to each retailer CSV after initial load
-# ---------------------------------------------------------------------------
 RAW_DATA_SCHEMA = DataFrameSchema(
     columns={
         "date": Column(
@@ -52,9 +50,7 @@ RAW_DATA_SCHEMA = DataFrameSchema(
 )
 
 
-# ---------------------------------------------------------------------------
 # Canonical products schema — post product-matching
-# ---------------------------------------------------------------------------
 CANONICAL_PRODUCTS_SCHEMA = DataFrameSchema(
     columns={
         "canonical_name": Column(str, nullable=False),
@@ -73,9 +69,7 @@ CANONICAL_PRODUCTS_SCHEMA = DataFrameSchema(
 )
 
 
-# ---------------------------------------------------------------------------
 # Feature-engineered schema — pre-training validation
-# ---------------------------------------------------------------------------
 FEATURE_DATA_SCHEMA = DataFrameSchema(
     columns={
         "price_lag_1d": Column(float, nullable=True),

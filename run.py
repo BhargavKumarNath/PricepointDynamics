@@ -7,6 +7,7 @@ Usage:
     python run.py features     # Run feature engineering
     python run.py train        # Train LightGBM model
     python run.py anomaly      # Run anomaly detection
+    python run.py marts        # Materialize the DuckDB analytics marts
     python run.py precompute   # Precompute SHAP + market dynamics
     python run.py benchmark    # Run inference benchmark
     python run.py hhi          # Calculate HHI index
@@ -84,6 +85,17 @@ def anomaly() -> None:
     settings = _init()
     path = run_anomaly_detection(settings)
     typer.echo(f"✓ Anomaly detection complete → {path}")
+
+
+@app.command()
+def marts(force: bool = _FORCE_OPTION) -> None:
+    """Materialize the DuckDB analytics marts from 02_processed/."""
+    from pricepoint.marts import run_materialize_marts
+
+    settings = _init()
+    paths = run_materialize_marts(settings, force=force)
+    for name, path in paths.items():
+        typer.echo(f"✓ Mart '{name}' → {path}")
 
 
 @app.command()

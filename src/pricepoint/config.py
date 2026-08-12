@@ -96,6 +96,13 @@ class MarketDynamicsConfig(BaseModel):
     _resolve_dir = field_validator("output_dir", mode="after")(_resolve_path)
 
 
+class MartsConfig(BaseModel):
+    output_dir: Path
+    source_filename: str
+
+    _resolve_dir = field_validator("output_dir", mode="after")(_resolve_path)
+
+
 class AnomalyConfig(BaseModel):
     contamination: float
     random_state: int
@@ -128,6 +135,7 @@ class Settings(BaseSettings):
     matching: MatchingConfig
     shap: ShapConfig
     market_dynamics: MarketDynamicsConfig
+    marts: MartsConfig
     anomaly: AnomalyConfig
     benchmarking: BenchmarkingConfig
     logging: LoggingConfig

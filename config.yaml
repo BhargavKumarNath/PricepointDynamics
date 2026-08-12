@@ -62,6 +62,15 @@ market_dynamics:
   min_correlation: 0.15
   min_stores_for_common: 3
 
+marts:
+  # data/03_marts, not data/03_external (data.external_dir above) -- the
+  # "03_" prefix in data.external_dir was never actually used (no directory
+  # on disk, zero call sites in the codebase), so there's no real
+  # collision, just a cosmetic one. Renumber external_dir only if this
+  # project ever adds genuine external data (e.g. ONS inflation figures).
+  output_dir: data/03_marts
+  source_filename: canonical_products_e5.parquet
+
 anomaly:
   contamination: 0.01
   random_state: 42
