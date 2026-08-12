@@ -80,9 +80,7 @@ def run_anomaly_detection(settings: Settings) -> Path:
     """
     feature_path = settings.data.processed_dir / settings.features.output_filename
     if not feature_path.exists():
-        raise FileNotFoundError(
-            f"Feature data not found at {feature_path}. Run feature engineering first."
-        )
+        raise FileNotFoundError(f"Feature data not found at {feature_path}. Run feature engineering first.")
 
     logger.info("Loading feature data from %s …", feature_path)
     df = pd.read_parquet(feature_path, engine="pyarrow")

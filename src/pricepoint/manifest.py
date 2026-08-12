@@ -19,7 +19,8 @@ import hashlib
 import json
 import logging
 import subprocess
-from datetime import datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -54,16 +55,14 @@ def _schema_hash(df: pd.DataFrame) -> str:
     Lets two manifests be compared to detect schema drift between pipeline
     runs without needing a full data diff.
     """
-    schema_repr = "|".join(
-        f"{col}:{dtype}" for col, dtype in sorted(df.dtypes.astype(str).items())
-    )
+    schema_repr = "|".join(f"{col}:{dtype}" for col, dtype in sorted(df.dtypes.astype(str).items()))
     return hashlib.sha256(schema_repr.encode("utf-8")).hexdigest()[:16]
 
 
 def write_manifest(
     output_path: Path,
     df: pd.DataFrame,
-    source_files: list[Path | str],
+    source_files: Sequence[Path | str],
     stage: str,
 ) -> Path:
     """Write a manifest.json sidecar describing a pipeline output artifact.
@@ -76,8 +75,11 @@ def write_manifest(
         ``<output_path>.manifest.json``.
     df : pd.DataFrame
         The DataFrame that was written to ``output_path``.
-    source_files : list[Path | str]
-        The input file(s) this artifact was derived from.
+    source_files : Sequence[Path | str]
+        The input file(s) this artifact was derived from. ``Sequence``
+        (covariant) rather than ``list`` (invariant) so a ``list[Path]``
+        caller-side argument type-checks without a cast -- see
+        https://mypy.readthedocs.io/en/stable/common_issues.html#variance.
     stage : str
         Pipeline stage name (e.g. ``"ingestion"``, ``"feature_engineering"``).
 
@@ -95,7 +97,7 @@ def write_manifest(
         "schema_hash": _schema_hash(df),
         "source_files": [str(p) for p in source_files],
         "git_sha": _get_git_sha(),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
     manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")

@@ -33,7 +33,7 @@ Originally prototyped in notebooks, this repository has been thoroughly refactor
 
 The system is decoupled into two primary environments: the **Core ML Pipeline** (for heavy data processing) and the **Serving Layer** (interactive dashboard).
 
-### 1. The Core ML Pipeline (`pricepoint/`)
+### 1. The Core ML Pipeline (`src/pricepoint/`)
 A modular Python package executed via the `run.py` CLI. It manages the entire data lifecycle for 9.5 million transaction records:
 
 *   **Ingestion & Validation**: Raw CSVs are ingested, sanitized, and strictly validated against Pandas schemas.
@@ -67,21 +67,18 @@ To prevent Out-Of-Memory (OOM) crashes while serving 9.5 million rows, the live 
 To process the full 9.5 million row dataset and train the models yourself, follow these steps. *(Note: 8GB+ RAM recommended for the full pipeline).*
 
 ### 1. Setup Environment
+Dependencies are managed via [`uv`](https://docs.astral.sh/uv/) and a single `pyproject.toml` (no more separate `requirements.txt` files).
+
 ```bash
 # Clone the repository
 git clone https://github.com/bhargavkumarnath/pricepoint-dynamics.git
 cd pricepoint-dynamics
 
-# Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install core pipeline dependencies and development tools
-pip install -r requirements.txt
-
-# Install dashboard dependencies (Streamlit, UI tools)
-pip install -r dashboard/requirements.txt
+# Install uv (https://docs.astral.sh/uv/getting-started/installation/), then:
+uv sync --all-extras
 ```
+
+`uv sync` creates a `.venv` and installs the pipeline, dashboard, and dev tooling (pytest, ruff, mypy, pre-commit) from the locked `uv.lock`. Prefix commands with `uv run` (e.g. `uv run python run.py ingest`), or activate the venv directly with `source .venv/bin/activate`. A plain `pip install -e ".[dev]"` also works if you'd rather not use `uv`.
 
 ### 2. Run the ML Pipeline (CLI)
 The entire pipeline is orchestrated via the `run.py` Typer CLI. All parameters and file paths are centralized in `config.yaml`.
@@ -102,7 +99,7 @@ python run.py features
 python run.py train
 
 # 5. Pre-compute SHAP values, HHI, and Price Leadership metrics
-python run.py market
+python run.py precompute
 
 # 6. Run the Isolation Forest anomaly detection
 python run.py anomaly
@@ -147,15 +144,15 @@ Simple fuzzy matching fails across 127k products (requiring billions of comparis
 
 ```text
 pricepoint-dynamics/
-├── .github/workflows/          # CI/CD pipelines (Pytest, Ruff)
+├── .github/workflows/          # CI/CD pipelines (Pytest, Ruff, mypy)
 ├── dashboard/                  # Streamlit Web Application
 │   ├── app.py                  # Streamlit Entrypoint
 │   ├── data_loader.py          # PyArrow caching and artifact loading
 │   └── pages/                  # Interactive modules (Basket Analysis, etc)
 ├── data/                       # Local data storage (Ignored in Git)
 ├── models/                     # Serialized LightGBM .joblib models
-├── pricepoint/                 # Core Python Package
-│   ├── config.py               # Pydantic Configuration loading
+├── src/pricepoint/              # Core Python Package (installable, src/-layout)
+│   ├── config.py               # Pydantic-settings configuration loading
 │   ├── schemas.py              # Pandera Data Validation
 │   ├── data_ingestion.py       # Cleaning & Validation
 │   ├── product_matching.py     # Sentence-BERT & FAISS
@@ -166,7 +163,8 @@ pricepoint-dynamics/
 ├── tests/                      # Unit tests (Pytest)
 ├── run.py                      # Typer CLI orchestrator
 ├── config.yaml                 # Central project configuration
-└── requirements.txt            # Package dependencies
+├── pyproject.toml              # Single dependency source of truth (uv)
+└── uv.lock                     # Locked dependency versions
 ```
 
 ---

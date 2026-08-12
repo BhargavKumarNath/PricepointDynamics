@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-
 import pandera
 import pytest
 
-from pricepoint.schemas import RAW_DATA_SCHEMA, CANONICAL_PRODUCTS_SCHEMA
+from pricepoint.schemas import CANONICAL_PRODUCTS_SCHEMA, RAW_DATA_SCHEMA
 
 
 class TestRawDataSchema:

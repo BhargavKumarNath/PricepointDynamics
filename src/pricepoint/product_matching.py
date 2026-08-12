@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 # Text normalisation (migrated from src/data_processing.py)
 # ---------------------------------------------------------------------------
 
-_BRANDS_TO_REMOVE = frozenset(
-    ["tesco", "asda", "sainsburys", "saintsburys", "morrisons", "aldi"]
-)
+_BRANDS_TO_REMOVE = frozenset(["tesco", "asda", "sainsburys", "saintsburys", "morrisons", "aldi"])
 
 _UNIT_PATTERN = re.compile(
     r"\b\d+(\.\d+)?\s?(kg|g|ml|l|m|pack|pk|x\d+(\.\d+)?\s?(kg|g|ml|l)?|x)\b",
@@ -99,9 +97,7 @@ def generate_embeddings(
 
     names = product_names.tolist()
     logger.info("Encoding %s product names …", f"{len(names):,}")
-    embeddings = model.encode(
-        names, batch_size=batch_size, show_progress_bar=True, normalize_embeddings=True
-    )
+    embeddings = model.encode(names, batch_size=batch_size, show_progress_bar=True, normalize_embeddings=True)
     logger.info("Embeddings generated. Shape: %s", embeddings.shape)
     return embeddings
 
@@ -290,9 +286,7 @@ def find_canonical_matches(
     threshold = settings.matching.similarity_threshold
     mutual_k = settings.matching.mutual_neighbors_k
     logger.info("Clustering by similarity (threshold=%.2f, mutual_k=%s) …", threshold, mutual_k)
-    canonical_map = cluster_by_similarity(
-        embeddings, unique_names.tolist(), threshold, mutual_k=mutual_k
-    )
+    canonical_map = cluster_by_similarity(embeddings, unique_names.tolist(), threshold, mutual_k=mutual_k)
     # embeddings (~114K x 1024 float32, ~467 MB on the full dataset) and the
     # FAISS index built from them inside cluster_by_similarity are no longer
     # needed once canonical_map exists -- free them before building the
@@ -326,9 +320,7 @@ def run_matching(settings: Settings) -> Path:
     """
     interim_path = settings.data.interim_dir / "cleaned_supermarket_data.parquet"
     if not interim_path.exists():
-        raise FileNotFoundError(
-            f"Interim data not found at {interim_path}. Run ingestion first."
-        )
+        raise FileNotFoundError(f"Interim data not found at {interim_path}. Run ingestion first.")
 
     logger.info("Loading interim data from %s …", interim_path)
     df = pd.read_parquet(interim_path, engine="pyarrow")

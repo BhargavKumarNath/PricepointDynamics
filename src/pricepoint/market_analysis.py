@@ -54,21 +54,12 @@ def calculate_hhi(df: pd.DataFrame, group_col: str = "category") -> pd.DataFrame
         group_col = "canonical_name"
 
     # Count listings per retailer per category as a proxy for market share
-    counts = (
-        df.groupby([group_col, "supermarket"], observed=True)
-        .size()
-        .reset_index(name="n_listings")
-    )
+    counts = df.groupby([group_col, "supermarket"], observed=True).size().reset_index(name="n_listings")
     totals = counts.groupby(group_col, observed=True)["n_listings"].transform("sum")
     counts["share"] = counts["n_listings"] / totals
     counts["share_sq"] = (counts["share"] * 100) ** 2  # HHI uses percentage shares
 
-    hhi = (
-        counts.groupby(group_col, observed=True)["share_sq"]
-        .sum()
-        .reset_index()
-        .rename(columns={"share_sq": "hhi"})
-    )
+    hhi = counts.groupby(group_col, observed=True)["share_sq"].sum().reset_index().rename(columns={"share_sq": "hhi"})
     hhi["hhi"] = hhi["hhi"].round(0).astype(int)
     hhi["concentration"] = pd.cut(
         hhi["hhi"],
@@ -99,11 +90,7 @@ def compute_market_dispersion(df: pd.DataFrame) -> pd.Series:
         Daily mean dispersion indexed by date.
     """
     logger.info("Computing market dispersion …")
-    daily = (
-        df.groupby(["canonical_name", "date"], observed=True)["prices"]
-        .agg(["mean", "std"])
-        .reset_index()
-    )
+    daily = df.groupby(["canonical_name", "date"], observed=True)["prices"].agg(["mean", "std"]).reset_index()
     daily["dispersion"] = np.where(daily["mean"] > 0, daily["std"] / daily["mean"], 0)
     series = daily.groupby("date", observed=True)["dispersion"].mean().sort_index()
     logger.info("Dispersion computed. %s data points.", f"{len(series):,}")
@@ -183,12 +170,14 @@ def compute_price_leadership(
                     continue
 
             if lags:
-                results.append({
-                    "leader": leader,
-                    "follower": follower,
-                    "median_lag_days": float(np.median(lags)),
-                    "n_products_analyzed": len(lags),
-                })
+                results.append(
+                    {
+                        "leader": leader,
+                        "follower": follower,
+                        "median_lag_days": float(np.median(lags)),
+                        "n_products_analyzed": len(lags),
+                    }
+                )
 
     result_df = pd.DataFrame(results)
     result_df = result_df[result_df["median_lag_days"] != 0].copy()
@@ -234,8 +223,10 @@ def precompute_shap(settings: Settings) -> Path:
     df_sample = df.sample(n=sample_size, random_state=cfg.random_seed)
     logger.info("Sampled %s rows for SHAP.", f"{sample_size:,}")
 
-    # Encode categoricals
-    cat_cols = df_sample.select_dtypes(include=["object", "category"]).columns.tolist()
+    # Encode categoricals. "str" is included alongside "object" for the same
+    # pandas >= 3.0 forward-compatibility reason as training.py's identical
+    # select_dtypes call -- see the comment there.
+    cat_cols = df_sample.select_dtypes(include=["object", "str", "category"]).columns.tolist()
     if cat_cols:
         df_sample = pd.get_dummies(df_sample, columns=cat_cols, drop_first=True)
 

@@ -15,6 +15,9 @@ models/
 __pycache__/
 *.pyc
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
 
 # OS files
 .DS_Store
@@ -26,3 +29,5 @@ Thumbs.db
 # Agent config
 .agent/
 .claude/
+project_refactor.md
+.gitignore

@@ -70,8 +70,14 @@ def prepare_training_data(
     ]
     drop_cols = [c for c in drop_cols if c in train.columns]
 
-    # One-hot encode categoricals
-    cat_cols = train.select_dtypes(include=["object", "category"]).columns.tolist()
+    # One-hot encode categoricals. Include "str" explicitly alongside
+    # "object": pandas >= 3.0 has a dedicated string dtype distinct from
+    # "object", currently still caught by an "object" select_dtypes query
+    # only via a deprecated backward-compat shim (a live Pandas4Warning on
+    # this exact line was observed against pandas 3.0.5) -- listing it
+    # explicitly avoids silently losing every string-typed categorical
+    # column once that shim is removed upstream.
+    cat_cols = train.select_dtypes(include=["object", "str", "category"]).columns.tolist()
     cat_cols = [c for c in cat_cols if c not in drop_cols]
 
     if cat_cols:
@@ -194,9 +200,7 @@ def run_training(settings: Settings) -> Path:
     """
     feature_path = settings.data.processed_dir / settings.features.output_filename
     if not feature_path.exists():
-        raise FileNotFoundError(
-            f"Feature data not found at {feature_path}. Run feature engineering first."
-        )
+        raise FileNotFoundError(f"Feature data not found at {feature_path}. Run feature engineering first.")
 
     logger.info("Loading feature data from %s …", feature_path)
     df = pd.read_parquet(feature_path, engine="pyarrow")

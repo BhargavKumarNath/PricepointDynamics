@@ -20,17 +20,18 @@ def price_series_df() -> pd.DataFrame:
     rows = []
     for date in dates:
         for store in ["Tesco", "ASDA", "Aldi"]:
-            rows.append({
-                "canonical_name": "bananas",
-                "supermarket": store,
-                "date": date,
-                "prices": round(1.0 + np.random.rand() * 0.5, 2),
-            })
+            rows.append(
+                {
+                    "canonical_name": "bananas",
+                    "supermarket": store,
+                    "date": date,
+                    "prices": round(1.0 + np.random.rand() * 0.5, 2),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 class TestTemporalFeatures:
-
     def test_rolling_mean_columns_created(self, price_series_df):
         result = add_temporal_features(price_series_df, rolling_windows=[7], lag_days=[1])
         assert "price_rol_mean_7d" in result.columns
@@ -53,7 +54,6 @@ class TestTemporalFeatures:
 
 
 class TestCompetitiveFeatures:
-
     def test_columns_added(self, price_series_df):
         result = add_competitive_features(price_series_df)
         assert "price_vs_market_avg" in result.columns
@@ -66,13 +66,15 @@ class TestCompetitiveFeatures:
 
 
 class TestCyclicalFeatures:
-
     def test_columns_added(self, price_series_df):
         result = add_cyclical_features(price_series_df)
         expected = [
-            "day_of_week_sin", "day_of_week_cos",
-            "day_of_month_sin", "day_of_month_cos",
-            "week_of_year_sin", "week_of_year_cos",
+            "day_of_week_sin",
+            "day_of_week_cos",
+            "day_of_month_sin",
+            "day_of_month_cos",
+            "week_of_year_sin",
+            "week_of_year_cos",
         ]
         for col in expected:
             assert col in result.columns

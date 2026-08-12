@@ -35,9 +35,7 @@ class TestWriteManifest:
 
     def test_manifest_contents(self, tmp_path, sample_df):
         output_path = tmp_path / "output.parquet"
-        manifest_path = write_manifest(
-            output_path, sample_df, ["a.csv", "b.csv"], stage="feature_engineering"
-        )
+        manifest_path = write_manifest(output_path, sample_df, ["a.csv", "b.csv"], stage="feature_engineering")
 
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
@@ -55,15 +53,11 @@ class TestWriteManifest:
         path_a = tmp_path / "a.parquet"
         path_b = tmp_path / "b.parquet"
 
-        manifest_a = json.loads(
-            write_manifest(path_a, sample_df, [], stage="test").read_text(encoding="utf-8")
-        )
+        manifest_a = json.loads(write_manifest(path_a, sample_df, [], stage="test").read_text(encoding="utf-8"))
 
         different_df = sample_df.copy()
         different_df["c"] = [1.0, 2.0, 3.0]
-        manifest_b = json.loads(
-            write_manifest(path_b, different_df, [], stage="test").read_text(encoding="utf-8")
-        )
+        manifest_b = json.loads(write_manifest(path_b, different_df, [], stage="test").read_text(encoding="utf-8"))
 
         assert manifest_a["schema_hash"] != manifest_b["schema_hash"]
 
@@ -71,11 +65,7 @@ class TestWriteManifest:
         path_a = tmp_path / "a.parquet"
         path_b = tmp_path / "b.parquet"
 
-        manifest_a = json.loads(
-            write_manifest(path_a, sample_df, [], stage="test").read_text(encoding="utf-8")
-        )
-        manifest_b = json.loads(
-            write_manifest(path_b, sample_df.copy(), [], stage="test").read_text(encoding="utf-8")
-        )
+        manifest_a = json.loads(write_manifest(path_a, sample_df, [], stage="test").read_text(encoding="utf-8"))
+        manifest_b = json.loads(write_manifest(path_b, sample_df.copy(), [], stage="test").read_text(encoding="utf-8"))
 
         assert manifest_a["schema_hash"] == manifest_b["schema_hash"]

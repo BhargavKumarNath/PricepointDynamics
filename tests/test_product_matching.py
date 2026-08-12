@@ -136,9 +136,7 @@ class TestClusterBySimilarity:
 
     def test_canonical_name_is_lexicographically_smallest(self):
         names = ["zzz_product", "aaa_product", "mmm_product"]
-        embeddings = np.array(
-            [_unit_vector(0), _unit_vector(1), _unit_vector(2)], dtype=np.float32
-        )
+        embeddings = np.array([_unit_vector(0), _unit_vector(1), _unit_vector(2)], dtype=np.float32)
 
         canonical_map = cluster_by_similarity(embeddings, names, threshold=0.85)
 
@@ -151,13 +149,9 @@ class TestClusterBySimilarity:
         items were iterated in; connected-component clustering must not.
         """
         names_forward = ["product_a", "product_b", "product_c"]
-        embeddings_forward = np.array(
-            [_unit_vector(0), _unit_vector(20), _unit_vector(40)], dtype=np.float32
-        )
+        embeddings_forward = np.array([_unit_vector(0), _unit_vector(20), _unit_vector(40)], dtype=np.float32)
         names_reversed = list(reversed(names_forward))
-        embeddings_reversed = np.array(
-            [_unit_vector(40), _unit_vector(20), _unit_vector(0)], dtype=np.float32
-        )
+        embeddings_reversed = np.array([_unit_vector(40), _unit_vector(20), _unit_vector(0)], dtype=np.float32)
 
         forward_map = cluster_by_similarity(embeddings_forward, names_forward, threshold=0.85)
         reversed_map = cluster_by_similarity(embeddings_reversed, names_reversed, threshold=0.85)

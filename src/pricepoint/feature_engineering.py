@@ -47,17 +47,22 @@ def add_temporal_features(
 
     for window in rolling_windows:
         grp = df.groupby(group_cols, observed=True)["prices"]
+        # ruff's B023 ("function uses loop variable") is a false positive
+        # here: each lambda is passed straight into `.transform()` and both
+        # called and discarded within this same loop iteration, never
+        # stored for later -- there is no closure that outlives `window`'s
+        # current value, which is what B023 actually guards against.
         df[f"price_rol_mean_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).mean()
+            lambda x: x.rolling(window, min_periods=1).mean()  # noqa: B023
         )
         df[f"price_rol_std_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).std()
+            lambda x: x.rolling(window, min_periods=1).std()  # noqa: B023
         )
         df[f"price_rol_max_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).max()
+            lambda x: x.rolling(window, min_periods=1).max()  # noqa: B023
         )
         df[f"price_rol_min_{window}d"] = grp.transform(
-            lambda x: x.rolling(window, min_periods=1).min()
+            lambda x: x.rolling(window, min_periods=1).min()  # noqa: B023
         )
 
     for lag in lag_days:
@@ -175,9 +180,7 @@ def run_feature_engineering(settings: Settings) -> Path:
     """
     canonical_path = settings.data.processed_dir / settings.matching.output_filename
     if not canonical_path.exists():
-        raise FileNotFoundError(
-            f"Canonical products not found at {canonical_path}. Run matching first."
-        )
+        raise FileNotFoundError(f"Canonical products not found at {canonical_path}. Run matching first.")
 
     logger.info("Loading canonical products from %s …", canonical_path)
     df = pd.read_parquet(canonical_path, engine="pyarrow")

@@ -55,10 +55,7 @@ def load_raw_csvs(settings: Settings) -> pd.DataFrame:
         logger.info("  → %s rows loaded.", f"{len(df):,}")
 
     if not frames:
-        raise FileNotFoundError(
-            f"No raw CSV files found in {raw_dir}. "
-            f"Expected: {settings.data.raw_files}"
-        )
+        raise FileNotFoundError(f"No raw CSV files found in {raw_dir}. Expected: {settings.data.raw_files}")
 
     combined = pd.concat(frames, ignore_index=True)
     del frames
@@ -106,9 +103,7 @@ def clean_raw_data(df: pd.DataFrame) -> pd.DataFrame:
     # migrated into the package -- without it, RAW_DATA_SCHEMA validation
     # fails on every real run because the raw column names never match
     # what the schema expects.
-    df.columns = (
-        df.columns.str.lower().str.replace(r"[^\w]+", "_", regex=True).str.strip("_")
-    )
+    df.columns = df.columns.str.lower().str.replace(r"[^\w]+", "_", regex=True).str.strip("_")
     df = df.rename(columns=_COLUMN_RENAME_MAP)
 
     # Coerce dates
@@ -122,13 +117,15 @@ def clean_raw_data(df: pd.DataFrame) -> pd.DataFrame:
     # real booleans rather than text. `.str.strip()` only applies to
     # genuinely string-valued columns; skip anything else rather than
     # hardcoding a column name that may change.
-    for col in df.select_dtypes(include=["object"]).columns:
+    # "str" is listed alongside "object" for the same forward-compatibility
+    # reason as pricepoint/memory_utils.py::downcast_dtypes -- pandas >= 3.0
+    # has a distinct string dtype that an "object"-only query only still
+    # catches via a deprecated backward-compat shim.
+    for col in df.select_dtypes(include=["object", "str"]).columns:
         try:
             df[col] = df[col].str.strip()
         except AttributeError:
-            logger.debug(
-                "Column %r is object-dtype but not string-valued; skipping strip().", col
-            )
+            logger.debug("Column %r is object-dtype but not string-valued; skipping strip().", col)
 
     # Coerce prices
     if "prices" in df.columns:

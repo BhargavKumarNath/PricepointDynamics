@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import typer
 
-from pricepoint.config import load_settings
+from pricepoint.config import Settings, load_settings
 from pricepoint.logging_config import setup_logging
 
 app = typer.Typer(
@@ -26,7 +26,7 @@ app = typer.Typer(
 )
 
 
-def _init() -> "Settings":
+def _init() -> Settings:
     """Load settings and configure logging."""
     settings = load_settings()
     setup_logging(settings)

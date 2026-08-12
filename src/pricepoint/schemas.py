@@ -7,8 +7,8 @@ feature engineering.
 
 from __future__ import annotations
 
-import pandera as pa
-from pandera import Column, DataFrameSchema
+import pandera.pandas as pa
+from pandera.pandas import Column, DataFrameSchema
 
 # ---------------------------------------------------------------------------
 # Raw ingestion schema — applied to each retailer CSV after initial load

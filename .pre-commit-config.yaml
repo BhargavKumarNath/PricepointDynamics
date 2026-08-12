@@ -1,0 +1,32 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # Generous but bounded ceiling: guards against accidentally
+        # re-committing raw/processed data (data/ is gitignored, but this
+        # is a second line of defense given this project's history of
+        # large-file mishaps -- see project_refactor.md §2).
+        args: ["--maxkb=1024"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.2
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+
+# mypy deliberately not run as a pre-commit hook -- type-checking the full
+# src/pricepoint tree is slow enough to hurt commit-time UX; it runs in CI
+# instead (see project_refactor.md §12 and .github/workflows/ci.yml).

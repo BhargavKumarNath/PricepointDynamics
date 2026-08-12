@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pricepoint-dynamics"
+version = "1.0.0"
+description = "UK supermarket competitive intelligence pipeline — ingestion, semantic product matching, feature engineering, price prediction, and market analysis."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Bhargav Kumar Nath" }]
+
+dependencies = [
+    "pandas",
+    "numpy<2",
+    "pyyaml",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pandera",
+    "typer",
+    "psutil",
+    "joblib",
+    "duckdb",
+    "pyarrow",
+    "scikit-learn",
+    "lightgbm",
+    "shap",
+    "sentence-transformers",
+    "faiss-cpu",
+    "requests",
+    # Dashboard (Streamlit) runtime — kept in the same install as the core
+    # pipeline for now since dashboard/ and pricepoint/ are still deployed
+    # together; split into a separate optional group if/when the dashboard
+    # is decoupled from the core package (see project_refactor.md §9).
+    "streamlit",
+    "streamlit-agraph",
+    "matplotlib",
+    "seaborn",
+    "gdown",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "pre-commit",
+    "detect-secrets",
+    "types-PyYAML",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pricepoint"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+# dashboard/ (Streamlit UI: long literal dicts, HTML/markdown strings) and
+# notebooks/ (narrative EDA, not yet thinned per project_refactor.md §19
+# Phase 1+) are deliberately excluded from Phase 0's lint gate -- neither
+# was touched for src/-layout packaging, and holding untouched
+# presentation/exploratory code to the same bar as src/pricepoint here
+# would be scope creep beyond "zero business-logic changes". Revisit this
+# exclusion explicitly once either area is in scope for a phase.
+extend-exclude = ["dashboard", "notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
