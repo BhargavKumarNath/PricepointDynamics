@@ -161,6 +161,54 @@ class Warehouse:
         """
         return self._conn.execute(sql, [str(fact_path), str(dim_path)]).fetchdf()
 
+    def get_product_history(self, canonical_name: str, supermarket: str | None = None) -> pd.DataFrame:
+        """Daily price history for one product, for charting.
+
+        Grounds the charting half of `GET
+        /v1/products/{canonical_id}/history` (project_refactor.md §8.1)
+        -- the *other* half of that endpoint's stated purpose ("the
+        predictor's real feature-vector lookup") is intentionally NOT
+        this method: that lookup needs the full ~40-column feature set
+        (rolling means, lags) that `fact_price_daily` deliberately
+        excludes (project_refactor.md §5), so it reads
+        `feature_engineered_data.parquet` directly via
+        `api/services/predict.py`, not through the marts layer at all.
+
+        Parameters
+        ----------
+        canonical_name : str
+            The exact canonical product name.
+        supermarket : str, optional
+            If given, restrict to this one retailer; otherwise return
+            history for every retailer that stocks the product.
+
+        Returns
+        -------
+        pd.DataFrame
+            Columns: date, supermarket, avg_price, min_price, max_price,
+            n_listings, ordered by date. Empty (not an error) if the
+            product doesn't exist in the mart -- callers decide whether
+            an empty result means "not found" (this class has no HTTP
+            concerns of its own).
+        """
+        path = self._mart_path("fact_price_daily")
+        if supermarket is not None:
+            sql = """
+                SELECT date, supermarket, avg_price, min_price, max_price, n_listings
+                FROM read_parquet(?)
+                WHERE canonical_name = ? AND supermarket = ?
+                ORDER BY date
+            """
+            return self._conn.execute(sql, [str(path), canonical_name, supermarket]).fetchdf()
+
+        sql = """
+            SELECT date, supermarket, avg_price, min_price, max_price, n_listings
+            FROM read_parquet(?)
+            WHERE canonical_name = ?
+            ORDER BY date, supermarket
+        """
+        return self._conn.execute(sql, [str(path), canonical_name]).fetchdf()
+
     def get_basket_cost(self, canonical_names: list[str]) -> pd.DataFrame:
         """Latest-date price + coverage per retailer for a set of products.
 

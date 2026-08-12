@@ -93,6 +93,34 @@ class TestSearchProducts:
             wh.search_products("bananas")
 
 
+class TestGetProductHistory:
+    def test_returns_history_across_all_retailers(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_product_history("bananas")
+        assert set(result["supermarket"]) == {"Tesco", "ASDA", "Aldi"}
+        assert len(result) == 3
+
+    def test_filters_to_one_retailer(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_product_history("milk", supermarket="Tesco")
+        assert set(result["supermarket"]) == {"Tesco"}
+        assert len(result) == 2  # milk/Tesco has 2 dated rows in the fixture
+
+    def test_ordered_by_date(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_product_history("milk", supermarket="Tesco")
+        assert list(result["date"]) == sorted(result["date"])
+
+    def test_unknown_product_returns_empty_not_error(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_product_history("not_a_real_product")
+        assert len(result) == 0
+
+    def test_missing_mart_raises_clear_error(self, tmp_path):
+        with Warehouse(tmp_path) as wh, pytest.raises(MartNotFoundError):
+            wh.get_product_history("bananas")
+
+
 class TestGetMarketOverview:
     def test_one_row_per_retailer(self, marts_dir):
         with Warehouse(marts_dir) as wh:

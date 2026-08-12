@@ -83,3 +83,11 @@ logging:
   level: INFO
   format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
   file: null  # Set to a path to enable file logging
+
+api:
+  # Local dev origins by default -- override via PRICEPOINT_API__CORS_ORIGINS
+  # (a JSON list) once a real frontend domain exists (project_refactor.md §16).
+  cors_origins:
+    - http://localhost:3000
+    - http://localhost:8501
+  predict_rate_limit: "30/minute"

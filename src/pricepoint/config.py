@@ -119,6 +119,13 @@ class LoggingConfig(BaseModel):
     file: str | None = None
 
 
+class ApiConfig(BaseModel):
+    # Explicit origins, not "*" (project_refactor.md §16) -- low-stakes data,
+    # but this is basic hygiene against casual cross-origin scraping.
+    cors_origins: list[str]
+    predict_rate_limit: str
+
+
 class Settings(BaseSettings):
     """Application settings loaded from config.yaml, overridable via env vars."""
 
@@ -139,6 +146,7 @@ class Settings(BaseSettings):
     anomaly: AnomalyConfig
     benchmarking: BenchmarkingConfig
     logging: LoggingConfig
+    api: ApiConfig
 
     @classmethod
     def settings_customise_sources(

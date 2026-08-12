@@ -22,6 +22,130 @@ from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
 
 logger = logging.getLogger(__name__)
 
+# Columns from feature_engineered_data.parquet that are never real
+# predictive features -- either the target itself, identifiers, or
+# same-row target leakage. Shared between training-time
+# (prepare_training_data) and serving-time (build_feature_vector) so both
+# agree on exactly which raw columns are eligible to become model inputs
+# -- the single most important place train/serve skew could otherwise
+# creep in.
+#
+# prices_unit specifically: a per-unit rescaling of THIS SAME ROW's
+# `prices` (e.g. £/kg derived from pack price / pack weight) -- within a
+# given (canonical_name, supermarket) group the ratio between the two is
+# close to constant (empirically true for ~82% of groups, verified
+# against real data in Phase 1), so it is same-row target leakage,
+# arguably more direct than the market-average leak already fixed
+# (ADR-0006/0018): it doesn't even require cross-referencing other rows,
+# just a near-fixed per-row rescaling of the value being predicted.
+_NON_FEATURE_COLUMNS = [
+    "prices",
+    "date",
+    "product_name",
+    "canonical_name",
+    "normalised_name",
+    "prices_unit",
+]
+
+
+def _encode_categorical_features(df: pd.DataFrame, exclude_cols: list[str]) -> pd.DataFrame:
+    """One-hot encode categorical columns, matching training's exact convention.
+
+    "str" is listed alongside "object" for the same pandas >= 3.0
+    forward-compatibility reason as elsewhere in this pipeline (a
+    dedicated string dtype exists separately from "object" and is only
+    still caught by an "object" query via a deprecated shim).
+    """
+    cat_cols = df.select_dtypes(include=["object", "str", "category"]).columns.tolist()
+    cat_cols = [c for c in cat_cols if c not in exclude_cols]
+    if cat_cols:
+        df = pd.get_dummies(df, columns=cat_cols, drop_first=True)
+    return df
+
+
+def _select_model_feature_columns(df: pd.DataFrame, exclude_cols: list[str]) -> pd.DataFrame:
+    """Select numeric+bool columns (after dropping exclude_cols), casting bool -> int8.
+
+    Bool must be selected explicitly alongside "number": a numeric-only
+    select_dtypes(["number"]) silently drops every bool-dtype column (the
+    raw own_brand flag, and every one-hot dummy pd.get_dummies() just
+    created) with no error, meaning every categorical feature would
+    vanish from the model input without a trace.
+    """
+    result = df.drop(columns=exclude_cols, errors="ignore").select_dtypes(include=["number", "bool"])
+    bool_cols = result.select_dtypes(include=["bool"]).columns
+    if len(bool_cols):
+        result[bool_cols] = result[bool_cols].astype("int8")
+    return result
+
+
+def build_feature_vector(
+    row: pd.DataFrame,
+    model_features: list[str],
+    price_override: float | None = None,
+) -> tuple[pd.DataFrame, list[str]]:
+    """Build a single-row model input from a real historical feature row.
+
+    Applies the *exact same* categorical-encoding and column-selection
+    transform as :func:`prepare_training_data` (via the shared
+    ``_encode_categorical_features``/``_select_model_feature_columns``
+    helpers above), so a served prediction can never silently diverge
+    from what the model was actually trained on. This is the mechanism
+    that makes an API-served prediction genuinely equivalent to
+    ``model.predict()`` on identically-resolved input, not merely
+    similar -- see ``tests/api/test_predict.py`` for the byte-for-byte
+    comparison this enables.
+
+    Unlike training, missing (NaN) feature values are **not** dropped: a
+    single real historical row may legitimately have NaN in a rolling/lag
+    column (e.g. a product with less than 30 days of history has no
+    ``price_rol_mean_30d`` yet), and LightGBM handles NaN inputs natively
+    at inference time (it learns a default split direction for missing
+    values during training) -- there is no "just drop this row" option
+    for a single prediction request. The caller is told which features
+    were unresolved so the API can report that honestly rather than let a
+    silent NaN pass through un-flagged (project_refactor.md §8.1: "if a
+    feature can't be resolved, the response says so explicitly rather
+    than guessing").
+
+    Parameters
+    ----------
+    row : pd.DataFrame
+        A single-row DataFrame with the raw feature-engineered columns
+        for one (canonical_name, supermarket, date) observation, as
+        looked up from real history (e.g. from
+        ``feature_engineered_data.parquet``) -- never fabricated.
+    model_features : list[str]
+        The trained model's exact expected column list/order
+        (``model.feature_name_``).
+    price_override : float, optional
+        If given, overrides ``price_lag_1d`` before encoding -- the one
+        field genuinely user-controllable via `POST /v1/predict` (a
+        "what if yesterday's price were different" scenario). Every
+        other feature remains the real resolved historical value;
+        nothing else is user-settable.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, list[str]]
+        (single-row input ready for ``model.predict()``, names of the
+        requested ``model_features`` that could not be resolved --
+        genuinely NaN in the source row, not the expected zero-fill of an
+        absent one-hot category).
+    """
+    row = row.copy()
+    if price_override is not None and "price_lag_1d" in row.columns:
+        row["price_lag_1d"] = price_override
+
+    drop_cols = [c for c in _NON_FEATURE_COLUMNS if c in row.columns]
+    encoded = _encode_categorical_features(row, exclude_cols=drop_cols)
+    selected = _select_model_feature_columns(encoded, exclude_cols=drop_cols)
+
+    input_vector = selected.reindex(columns=model_features, fill_value=0)
+    unresolved = input_vector.columns[input_vector.isna().any(axis=0)].tolist()
+
+    return input_vector, unresolved
+
 
 def prepare_training_data(
     df: pd.DataFrame,
@@ -52,59 +176,17 @@ def prepare_training_data(
 
     logger.info("Train: %s rows, Test: %s rows", f"{len(train):,}", f"{len(test):,}")
 
-    # Separate target
     target_col = "prices"
-    drop_cols = [
-        target_col,
-        "date",
-        "product_name",
-        "canonical_name",
-        "normalised_name",
-        # prices_unit is a per-unit rescaling of THIS SAME ROW's `prices`
-        # (e.g. £/kg derived from pack price / pack weight) -- within a
-        # given (canonical_name, supermarket) group the ratio between the
-        # two is close to constant (empirically true for ~82% of groups,
-        # verified against real data in Phase 1), so it is same-row target
-        # leakage, arguably more direct than the market-average leak this
-        # phase already fixed (ADR-0006/0018): it doesn't even require
-        # cross-referencing other rows, just a near-fixed per-row rescaling
-        # of the value being predicted.
-        "prices_unit",
-    ]
-    drop_cols = [c for c in drop_cols if c in train.columns]
+    drop_cols = [c for c in _NON_FEATURE_COLUMNS if c in train.columns]
 
-    # One-hot encode categoricals. Include "str" explicitly alongside
-    # "object": pandas >= 3.0 has a dedicated string dtype distinct from
-    # "object", currently still caught by an "object" select_dtypes query
-    # only via a deprecated backward-compat shim (a live Pandas4Warning on
-    # this exact line was observed against pandas 3.0.5) -- listing it
-    # explicitly avoids silently losing every string-typed categorical
-    # column once that shim is removed upstream.
-    cat_cols = train.select_dtypes(include=["object", "str", "category"]).columns.tolist()
-    cat_cols = [c for c in cat_cols if c not in drop_cols]
-
-    if cat_cols:
-        train = pd.get_dummies(train, columns=cat_cols, drop_first=True)
-        test = pd.get_dummies(test, columns=cat_cols, drop_first=True)
+    train = _encode_categorical_features(train, exclude_cols=drop_cols)
+    test = _encode_categorical_features(test, exclude_cols=drop_cols)
 
     y_train = train[target_col]
     y_test = test[target_col]
 
-    # Select numeric AND boolean columns. One-hot dummies created by
-    # pd.get_dummies() above (and the raw `own_brand` flag) are bool dtype
-    # in modern pandas -- a numeric-only select_dtypes(["number"]) silently
-    # drops them entirely, with no error, meaning every categorical feature
-    # (supermarket, category, own_brand) would vanish from training without
-    # a trace. Include bool explicitly and cast to int8 for a consistent
-    # numeric dtype across the whole feature matrix.
-    feature_dtypes = ["number", "bool"]
-    X_train = train.drop(columns=drop_cols, errors="ignore").select_dtypes(include=feature_dtypes)
-    X_test = test.drop(columns=drop_cols, errors="ignore").select_dtypes(include=feature_dtypes)
-
-    for frame in (X_train, X_test):
-        bool_cols = frame.select_dtypes(include=["bool"]).columns
-        if len(bool_cols):
-            frame[bool_cols] = frame[bool_cols].astype("int8")
+    X_train = _select_model_feature_columns(train, exclude_cols=drop_cols)
+    X_test = _select_model_feature_columns(test, exclude_cols=drop_cols)
 
     # Align columns
     X_test = X_test.reindex(columns=X_train.columns, fill_value=0)

@@ -39,6 +39,13 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "gdown",
+    # API (Phase 4) — FastAPI service, api/. httpx is required by
+    # starlette's TestClient (not just a test-only convenience), so it's a
+    # main dependency, not confined to the dev group.
+    "fastapi",
+    "uvicorn[standard]",
+    "slowapi",
+    "httpx",
 ]
 
 [project.optional-dependencies]
@@ -64,6 +71,11 @@ packages = ["src/pricepoint"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# api/ lives at the repo root (sibling to src/, not inside src/pricepoint/
+# -- see project_refactor.md §4), so it is not installed as part of the
+# wheel and needs the repo root on sys.path for `from api...` imports in
+# tests/api/ to resolve regardless of the invocation directory.
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 120
@@ -79,6 +91,13 @@ extend-exclude = ["dashboard", "notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# B008 (no function calls in argument defaults) generically flags
+# `Depends(...)` as an anti-pattern, but it's FastAPI's own required
+# dependency-injection idiom -- evaluated once per request by FastAPI
+# itself, not at function-definition time like a mutable-default bug.
+"api/routers/*.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"
