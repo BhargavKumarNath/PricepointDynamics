@@ -140,7 +140,11 @@ class Warehouse:
         -------
         pd.DataFrame
             One row per retailer: portfolio_size, own_brand_pct,
-            min_price, price_p25, price_median, price_p75, max_price.
+            own_brand_count, branded_count, min_price, price_p25,
+            price_median, price_p75, max_price. ``own_brand_count``/
+            ``branded_count`` are row-weighted the same way as
+            ``own_brand_pct`` (see above) -- their sum is the retailer's
+            total listing-row count, not its portfolio size.
         """
         fact_path = self._mart_path("fact_price_daily")
         dim_path = self._mart_path("dim_product")
@@ -149,6 +153,8 @@ class Warehouse:
                 f.supermarket,
                 COUNT(DISTINCT f.canonical_name)                          AS portfolio_size,
                 AVG(CASE WHEN d.own_brand THEN 1.0 ELSE 0.0 END) * 100     AS own_brand_pct,
+                SUM(CASE WHEN d.own_brand THEN 1 ELSE 0 END)              AS own_brand_count,
+                SUM(CASE WHEN d.own_brand THEN 0 ELSE 1 END)              AS branded_count,
                 MIN(f.avg_price)::DOUBLE                                  AS min_price,
                 quantile_cont(f.avg_price, 0.25)::DOUBLE                  AS price_p25,
                 MEDIAN(f.avg_price)::DOUBLE                               AS price_median,
@@ -251,5 +257,46 @@ class Warehouse:
               AND f.canonical_name IN (SELECT UNNEST(?::VARCHAR[]))
             GROUP BY f.supermarket
             ORDER BY f.supermarket
+        """
+        return self._conn.execute(sql, [str(path), str(path), canonical_names]).fetchdf()
+
+    def get_basket_item_prices(self, canonical_names: list[str]) -> pd.DataFrame:
+        """Per-product, per-retailer latest-date price for a set of products.
+
+        The item-level counterpart to :meth:`get_basket_cost`'s per-retailer
+        summary -- backs the "detailed basket breakdown" table (which
+        product, which store, what price) rather than the aggregate cost.
+        Long format (one row per product/store pair that exists), not a
+        pivoted grid, since callers (e.g. `web_artifacts.py`) know their
+        own preferred pivot shape and a product not stocked by a retailer
+        should be absent, not a zero-filled cell.
+
+        Parameters
+        ----------
+        canonical_names : list[str]
+            Canonical product names to look up.
+
+        Returns
+        -------
+        pd.DataFrame
+            canonical_name, supermarket, price -- one row per (product,
+            retailer) pair that has a listing on the mart's latest date.
+        """
+        if not canonical_names:
+            return pd.DataFrame(columns=["canonical_name", "supermarket", "price"])
+
+        path = self._mart_path("fact_price_daily")
+        sql = """
+            WITH latest AS (
+                SELECT MAX(date) AS max_date FROM read_parquet(?)
+            )
+            SELECT
+                f.canonical_name,
+                f.supermarket,
+                f.avg_price::DOUBLE AS price
+            FROM read_parquet(?) f, latest
+            WHERE f.date = latest.max_date
+              AND f.canonical_name IN (SELECT UNNEST(?::VARCHAR[]))
+            ORDER BY f.canonical_name, f.supermarket
         """
         return self._conn.execute(sql, [str(path), str(path), canonical_names]).fetchdf()

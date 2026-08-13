@@ -1,0 +1,11 @@
+{
+  "total_records": 9529216,
+  "canonical_products": 68596,
+  "mae": 0.1487,
+  "rmse": 1.2589,
+  "r2": 0.9652,
+  "n_train_rows": 5151151,
+  "n_test_rows": 444314,
+  "n_features": 42,
+  "trained_at": "2026-08-12T19:56:22.697698+00:00"
+}

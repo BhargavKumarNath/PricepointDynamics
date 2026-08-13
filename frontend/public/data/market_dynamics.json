@@ -1,0 +1,490 @@
+{
+  "dispersion": [
+    {
+      "date": "2024-01-09",
+      "dispersion": 0.18708456242602256
+    },
+    {
+      "date": "2024-01-10",
+      "dispersion": 0.18699106960144016
+    },
+    {
+      "date": "2024-01-11",
+      "dispersion": 0.1867866852909632
+    },
+    {
+      "date": "2024-01-12",
+      "dispersion": 0.19340723954794778
+    },
+    {
+      "date": "2024-01-13",
+      "dispersion": 0.18572353876970502
+    },
+    {
+      "date": "2024-01-14",
+      "dispersion": 0.1915407093787753
+    },
+    {
+      "date": "2024-01-15",
+      "dispersion": 0.11182141875573594
+    },
+    {
+      "date": "2024-01-16",
+      "dispersion": 0.18554460784723398
+    },
+    {
+      "date": "2024-01-17",
+      "dispersion": 0.18582466408296358
+    },
+    {
+      "date": "2024-01-18",
+      "dispersion": 0.18792720725315612
+    },
+    {
+      "date": "2024-01-19",
+      "dispersion": 0.18652492457352435
+    },
+    {
+      "date": "2024-01-20",
+      "dispersion": 0.18605472572230633
+    },
+    {
+      "date": "2024-01-21",
+      "dispersion": 0.1857726776035951
+    },
+    {
+      "date": "2024-01-22",
+      "dispersion": 0.18653904848365155
+    },
+    {
+      "date": "2024-01-23",
+      "dispersion": 0.1888740072092179
+    },
+    {
+      "date": "2024-01-24",
+      "dispersion": 0.19000585161613467
+    },
+    {
+      "date": "2024-01-25",
+      "dispersion": 0.18834010458597175
+    },
+    {
+      "date": "2024-01-26",
+      "dispersion": 0.18770001401070435
+    },
+    {
+      "date": "2024-01-27",
+      "dispersion": 0.18801943646606
+    },
+    {
+      "date": "2024-01-28",
+      "dispersion": 0.19000543693148433
+    },
+    {
+      "date": "2024-01-29",
+      "dispersion": 0.1879097237336822
+    },
+    {
+      "date": "2024-01-30",
+      "dispersion": 0.1875877656840173
+    },
+    {
+      "date": "2024-01-31",
+      "dispersion": 0.18664003281624653
+    },
+    {
+      "date": "2024-02-01",
+      "dispersion": 0.1850805693849703
+    },
+    {
+      "date": "2024-02-04",
+      "dispersion": 0.1855747596659706
+    },
+    {
+      "date": "2024-02-05",
+      "dispersion": 0.18538013487964144
+    },
+    {
+      "date": "2024-02-06",
+      "dispersion": 0.186277750929769
+    },
+    {
+      "date": "2024-02-07",
+      "dispersion": 0.185583552930768
+    },
+    {
+      "date": "2024-02-08",
+      "dispersion": 0.18581190840522674
+    },
+    {
+      "date": "2024-02-09",
+      "dispersion": 0.1857017964193137
+    },
+    {
+      "date": "2024-02-10",
+      "dispersion": 0.18593454781187066
+    },
+    {
+      "date": "2024-02-11",
+      "dispersion": 0.18699868332612365
+    },
+    {
+      "date": "2024-02-12",
+      "dispersion": 0.18618292684493903
+    },
+    {
+      "date": "2024-02-13",
+      "dispersion": 0.18668996429880494
+    },
+    {
+      "date": "2024-02-14",
+      "dispersion": 0.18609111336171946
+    },
+    {
+      "date": "2024-02-15",
+      "dispersion": 0.18629142293165296
+    },
+    {
+      "date": "2024-02-16",
+      "dispersion": 0.1857720211454821
+    },
+    {
+      "date": "2024-02-17",
+      "dispersion": 0.18570576771894923
+    },
+    {
+      "date": "2024-02-18",
+      "dispersion": 0.18622298055824707
+    },
+    {
+      "date": "2024-02-19",
+      "dispersion": 0.1861146721261378
+    },
+    {
+      "date": "2024-02-20",
+      "dispersion": 0.18440201388578437
+    },
+    {
+      "date": "2024-02-21",
+      "dispersion": 0.18374990841158864
+    },
+    {
+      "date": "2024-02-22",
+      "dispersion": 0.18385635237922635
+    },
+    {
+      "date": "2024-02-23",
+      "dispersion": 0.18512659809516746
+    },
+    {
+      "date": "2024-02-24",
+      "dispersion": 0.18417055047520356
+    },
+    {
+      "date": "2024-02-25",
+      "dispersion": 0.1839752649652853
+    },
+    {
+      "date": "2024-02-26",
+      "dispersion": 0.18422402229737983
+    },
+    {
+      "date": "2024-02-27",
+      "dispersion": 0.18508415432880973
+    },
+    {
+      "date": "2024-02-28",
+      "dispersion": 0.1865037045349482
+    },
+    {
+      "date": "2024-02-29",
+      "dispersion": 0.18593647045303022
+    },
+    {
+      "date": "2024-03-01",
+      "dispersion": 0.18888721318013463
+    },
+    {
+      "date": "2024-03-02",
+      "dispersion": 0.18711665463670912
+    },
+    {
+      "date": "2024-03-03",
+      "dispersion": 0.18565017300693265
+    },
+    {
+      "date": "2024-03-04",
+      "dispersion": 0.18508945008518785
+    },
+    {
+      "date": "2024-03-05",
+      "dispersion": 0.18470773127293436
+    },
+    {
+      "date": "2024-03-06",
+      "dispersion": 0.187992883082367
+    },
+    {
+      "date": "2024-03-07",
+      "dispersion": 0.1861608519317978
+    },
+    {
+      "date": "2024-03-08",
+      "dispersion": 0.18478250137562147
+    },
+    {
+      "date": "2024-03-09",
+      "dispersion": 0.18456770515663937
+    },
+    {
+      "date": "2024-03-10",
+      "dispersion": 0.18546464133692517
+    },
+    {
+      "date": "2024-03-11",
+      "dispersion": 0.1853842992446935
+    },
+    {
+      "date": "2024-03-12",
+      "dispersion": 0.1841799484047319
+    },
+    {
+      "date": "2024-03-13",
+      "dispersion": 0.18426915431211455
+    },
+    {
+      "date": "2024-03-15",
+      "dispersion": 0.1856402827651801
+    },
+    {
+      "date": "2024-03-16",
+      "dispersion": 0.18422207003608876
+    },
+    {
+      "date": "2024-03-17",
+      "dispersion": 0.18421226356639744
+    },
+    {
+      "date": "2024-03-18",
+      "dispersion": 0.1850569892676447
+    },
+    {
+      "date": "2024-03-19",
+      "dispersion": 0.18641673696792696
+    },
+    {
+      "date": "2024-03-20",
+      "dispersion": 0.1865887587011755
+    },
+    {
+      "date": "2024-03-21",
+      "dispersion": 0.18754406350104233
+    },
+    {
+      "date": "2024-03-22",
+      "dispersion": 0.18774460809487573
+    },
+    {
+      "date": "2024-03-24",
+      "dispersion": 0.1875658385078652
+    },
+    {
+      "date": "2024-03-25",
+      "dispersion": 0.1882053876015143
+    },
+    {
+      "date": "2024-03-26",
+      "dispersion": 0.18958632029574984
+    },
+    {
+      "date": "2024-03-27",
+      "dispersion": 0.18835669156174417
+    },
+    {
+      "date": "2024-03-28",
+      "dispersion": 0.18876767845485068
+    },
+    {
+      "date": "2024-03-29",
+      "dispersion": 0.18942057458907116
+    },
+    {
+      "date": "2024-03-30",
+      "dispersion": 0.18875980911743345
+    },
+    {
+      "date": "2024-03-31",
+      "dispersion": 0.18956714004694497
+    },
+    {
+      "date": "2024-04-01",
+      "dispersion": 0.1894084322990589
+    },
+    {
+      "date": "2024-04-02",
+      "dispersion": 0.1895751754713903
+    },
+    {
+      "date": "2024-04-03",
+      "dispersion": 0.18897130043835447
+    },
+    {
+      "date": "2024-04-04",
+      "dispersion": 0.18912070784375137
+    },
+    {
+      "date": "2024-04-05",
+      "dispersion": 0.18860330407466597
+    },
+    {
+      "date": "2024-04-06",
+      "dispersion": 0.18926801683662237
+    },
+    {
+      "date": "2024-04-07",
+      "dispersion": 0.18890223204189738
+    },
+    {
+      "date": "2024-04-08",
+      "dispersion": 0.18844361976108476
+    },
+    {
+      "date": "2024-04-09",
+      "dispersion": 0.18833475221094906
+    },
+    {
+      "date": "2024-04-10",
+      "dispersion": 0.19058989296924556
+    },
+    {
+      "date": "2024-04-11",
+      "dispersion": 0.1877888415422105
+    },
+    {
+      "date": "2024-04-12",
+      "dispersion": 0.18867436186632472
+    },
+    {
+      "date": "2024-04-13",
+      "dispersion": 0.1889870907567286
+    }
+  ],
+  "leadership": [
+    {
+      "leader": "ASDA",
+      "follower": "Aldi",
+      "median_lag_days": -3.0,
+      "n_products_analyzed": 17
+    },
+    {
+      "leader": "ASDA",
+      "follower": "Morrisons",
+      "median_lag_days": 2.0,
+      "n_products_analyzed": 276
+    },
+    {
+      "leader": "ASDA",
+      "follower": "Sains",
+      "median_lag_days": -2.0,
+      "n_products_analyzed": 395
+    },
+    {
+      "leader": "ASDA",
+      "follower": "Tesco",
+      "median_lag_days": 2.0,
+      "n_products_analyzed": 366
+    },
+    {
+      "leader": "Aldi",
+      "follower": "ASDA",
+      "median_lag_days": 3.0,
+      "n_products_analyzed": 17
+    },
+    {
+      "leader": "Aldi",
+      "follower": "Morrisons",
+      "median_lag_days": 3.5,
+      "n_products_analyzed": 16
+    },
+    {
+      "leader": "Aldi",
+      "follower": "Sains",
+      "median_lag_days": 1.5,
+      "n_products_analyzed": 14
+    },
+    {
+      "leader": "Aldi",
+      "follower": "Tesco",
+      "median_lag_days": 4.0,
+      "n_products_analyzed": 13
+    },
+    {
+      "leader": "Morrisons",
+      "follower": "ASDA",
+      "median_lag_days": -2.0,
+      "n_products_analyzed": 276
+    },
+    {
+      "leader": "Morrisons",
+      "follower": "Aldi",
+      "median_lag_days": -3.5,
+      "n_products_analyzed": 16
+    },
+    {
+      "leader": "Morrisons",
+      "follower": "Sains",
+      "median_lag_days": 1.0,
+      "n_products_analyzed": 307
+    },
+    {
+      "leader": "Morrisons",
+      "follower": "Tesco",
+      "median_lag_days": 1.0,
+      "n_products_analyzed": 275
+    },
+    {
+      "leader": "Sains",
+      "follower": "ASDA",
+      "median_lag_days": 2.0,
+      "n_products_analyzed": 395
+    },
+    {
+      "leader": "Sains",
+      "follower": "Aldi",
+      "median_lag_days": -1.5,
+      "n_products_analyzed": 14
+    },
+    {
+      "leader": "Sains",
+      "follower": "Morrisons",
+      "median_lag_days": -1.0,
+      "n_products_analyzed": 307
+    },
+    {
+      "leader": "Tesco",
+      "follower": "ASDA",
+      "median_lag_days": -2.0,
+      "n_products_analyzed": 366
+    },
+    {
+      "leader": "Tesco",
+      "follower": "Aldi",
+      "median_lag_days": -4.0,
+      "n_products_analyzed": 13
+    },
+    {
+      "leader": "Tesco",
+      "follower": "Morrisons",
+      "median_lag_days": -1.0,
+      "n_products_analyzed": 275
+    }
+  ],
+  "latest_dispersion": 0.1889870907567286,
+  "avg_dispersion": 0.18608310014316448,
+  "top_leader": "ASDA",
+  "fastest_follower": {
+    "follower": "Sains",
+    "leader": "Morrisons",
+    "median_lag_days": 1.0
+  }
+}

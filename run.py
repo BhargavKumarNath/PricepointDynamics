@@ -9,6 +9,7 @@ Usage:
     python run.py anomaly      # Run anomaly detection
     python run.py marts        # Materialize the DuckDB analytics marts
     python run.py precompute   # Precompute SHAP + market dynamics
+    python run.py web-artifacts # Export precomputed frontend artifacts
     python run.py benchmark    # Run inference benchmark
     python run.py hhi          # Calculate HHI index
 """
@@ -116,6 +117,17 @@ def benchmark() -> None:
     settings = _init()
     result = run_benchmark(settings)
     typer.echo(str(result))
+
+
+@app.command()
+def web_artifacts() -> None:
+    """Export precomputed frontend artifacts (project_refactor.md §25.3)."""
+    from pricepoint.web_artifacts import run_export_web_artifacts
+
+    settings = _init()
+    paths = run_export_web_artifacts(settings)
+    for name, path in paths.items():
+        typer.echo(f"✓ Web artifact '{name}' → {path}")
 
 
 @app.command()

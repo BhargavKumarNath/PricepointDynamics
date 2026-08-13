@@ -91,3 +91,10 @@ api:
     - http://localhost:3000
     - http://localhost:8501
   predict_rate_limit: "30/minute"
+
+web_artifacts:
+  # Mirrors production's frontend/public/data/ (committed JSON) and the
+  # local stand-in for Cloudflare R2 (frontend/public/data-r2/) used in
+  # local dev when real R2 credentials aren't configured (project_refactor.md §25.3).
+  json_dir: frontend/public/data
+  parquet_dir: frontend/public/data-r2

@@ -4,6 +4,16 @@ data/
 *.joblib
 *.npy
 
+# ...except the frontend's precomputed static artifacts (project_refactor.md
+# §25.3): the small JSON is meant to be committed to the frontend repo, and
+# the two Parquet artifacts are committed here as the local stand-in for a
+# real Cloudflare R2 bucket (no R2 credentials in this environment -- see
+# WebArtifactsConfig's docstring in src/pricepoint/config.py).
+!frontend/public/data/
+!frontend/public/data/**
+!frontend/public/data-r2/
+!frontend/public/data-r2/**
+
 # Precomputed artifacts — served from Google Drive
 market_dynamics_precomputed/
 shap_precomputed/

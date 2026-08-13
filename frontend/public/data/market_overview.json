@@ -1,0 +1,64 @@
+{
+  "supermarkets": [
+    {
+      "supermarket": "ASDA",
+      "portfolio_size": 22161,
+      "own_brand_pct": 29.922118928563044,
+      "own_brand_count": 509837.0,
+      "branded_count": 1194043.0,
+      "min_price": 0.05000000074505806,
+      "price_p25": 1.700000007947286,
+      "price_median": 3.0,
+      "price_p75": 6.0,
+      "max_price": 479.989990234375
+    },
+    {
+      "supermarket": "Aldi",
+      "portfolio_size": 4975,
+      "own_brand_pct": 22.525564547298533,
+      "own_brand_count": 75182.0,
+      "branded_count": 258581.0,
+      "min_price": 0.009999999776482582,
+      "price_p25": 0.9900000095367432,
+      "price_median": 1.4900000095367432,
+      "price_p75": 2.490000009536743,
+      "max_price": 130.6599998474121
+    },
+    {
+      "supermarket": "Morrisons",
+      "portfolio_size": 19780,
+      "own_brand_pct": 26.37270216782278,
+      "own_brand_count": 369394.0,
+      "branded_count": 1031274.0,
+      "min_price": 0.20000000298023224,
+      "price_p25": 1.75,
+      "price_median": 2.75,
+      "price_p75": 5.0,
+      "max_price": 300.0
+    },
+    {
+      "supermarket": "Sains",
+      "portfolio_size": 22677,
+      "own_brand_pct": 25.890096683108155,
+      "own_brand_count": 463586.0,
+      "branded_count": 1327006.0,
+      "min_price": 0.009999999776482582,
+      "price_p25": 1.899999976158142,
+      "price_median": 3.0,
+      "price_p75": 6.199999809265137,
+      "max_price": 190.0
+    },
+    {
+      "supermarket": "Tesco",
+      "portfolio_size": 21659,
+      "own_brand_pct": 28.328781693058602,
+      "own_brand_count": 448533.0,
+      "branded_count": 1134779.0,
+      "min_price": 0.0,
+      "price_p25": 1.75,
+      "price_median": 3.0,
+      "price_p75": 6.0,
+      "max_price": 421.04998779296875
+    }
+  ]
+}

@@ -147,6 +147,16 @@ class TestGetMarketOverview:
         tesco = result[result["supermarket"] == "Tesco"].iloc[0]
         assert tesco["own_brand_pct"] == pytest.approx(40.0)
 
+    def test_own_brand_and_branded_counts_sum_to_row_count(self, marts_dir):
+        """own_brand_count/branded_count are row-weighted the same way as
+        own_brand_pct -- Tesco's 5 fact rows: 2 own-brand, 3 branded."""
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_market_overview()
+        tesco = result[result["supermarket"] == "Tesco"].iloc[0]
+        assert tesco["own_brand_count"] == 2
+        assert tesco["branded_count"] == 3
+        assert tesco["own_brand_count"] + tesco["branded_count"] == 5
+
     def test_price_columns_present_and_ordered(self, marts_dir):
         with Warehouse(marts_dir) as wh:
             result = wh.get_market_overview()
@@ -191,6 +201,40 @@ class TestGetBasketCost:
         with Warehouse(marts_dir) as wh:
             result = wh.get_basket_cost(["not_a_real_product"])
         assert len(result) == 0
+
+
+class TestGetBasketItemPrices:
+    def test_returns_long_format_rows(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_basket_item_prices(["bananas", "milk"])
+        assert set(result.columns) == {"canonical_name", "supermarket", "price"}
+        # bananas: Tesco/ASDA/Aldi; milk: Tesco/ASDA/Aldi -- 6 rows total
+        assert len(result) == 6
+        tesco_bananas = result[(result["canonical_name"] == "bananas") & (result["supermarket"] == "Tesco")]
+        assert tesco_bananas.iloc[0]["price"] == pytest.approx(0.99)
+
+    def test_only_uses_latest_date(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_basket_item_prices(["milk"])
+        tesco_milk = result[(result["canonical_name"] == "milk") & (result["supermarket"] == "Tesco")]
+        assert len(tesco_milk) == 1
+        assert tesco_milk.iloc[0]["price"] == pytest.approx(1.2)  # not the 2024-01-09 row (1.1)
+
+    def test_missing_product_store_absent_not_zero_filled(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_basket_item_prices(["cheddar cheese"])
+        # cheddar cheese is only stocked by Tesco (n_retailers=1)
+        assert set(result["supermarket"]) == {"Tesco"}
+
+    def test_empty_basket_returns_empty_result(self, marts_dir):
+        with Warehouse(marts_dir) as wh:
+            result = wh.get_basket_item_prices([])
+        assert len(result) == 0
+        assert list(result.columns) == ["canonical_name", "supermarket", "price"]
+
+    def test_missing_mart_raises_clear_error(self, tmp_path):
+        with Warehouse(tmp_path) as wh, pytest.raises(MartNotFoundError):
+            wh.get_basket_item_prices(["bananas"])
 
 
 class TestWarehouseLifecycle:

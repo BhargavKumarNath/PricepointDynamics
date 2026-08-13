@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* Design tokens (dataviz skill's reference palette -- see
+   project_refactor.md §25/Phase 5). Light is the base; dark redefines
+   the same roles under prefers-color-scheme, so both are genuinely
+   selected rather than a default-light site with an incidental dark
+   flip. No manual theme toggle -- matches the legacy dashboard's own
+   behavior (a fixed look), just OS-adaptive instead of forced-dark. */
+:root {
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --gridline: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --delta-good: #006300;
+
+  /* Categorical -- fixed order, never cycled. One retailer per slot,
+     the same mapping on every page/chart. */
+  --series-asda: #2a78d6;
+  --series-aldi: #eb6834;
+  --series-morrisons: #1baf7a;
+  --series-sains: #eda100;
+  --series-tesco: #e87ba4;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  /* Diverging (polarity: pushes a prediction up/down) -- deliberately
+     separate tokens from --series-asda/--series-tesco even though the
+     underlying hues are the palette's documented blue<->red diverging
+     pair, so this never reads as "which retailer" on an unrelated chart. */
+  --diverging-positive: #e34948;
+  --diverging-negative: #2a78d6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --gridline: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --delta-good: #0ca30c;
+
+    --series-asda: #3987e5;
+    --series-aldi: #d95926;
+    --series-morrisons: #199e70;
+    --series-sains: #c98500;
+    --series-tesco: #d55181;
+
+    --diverging-positive: #e66767;
+    --diverging-negative: #3987e5;
+  }
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-gridline: var(--gridline);
+  --color-axis: var(--axis);
+  --color-border: var(--border);
+  --color-delta-good: var(--delta-good);
+  --color-status-good: var(--status-good);
+  --color-status-warning: var(--status-warning);
+  --color-status-serious: var(--status-serious);
+  --color-status-critical: var(--status-critical);
+  --color-diverging-positive: var(--diverging-positive);
+  --color-diverging-negative: var(--diverging-negative);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--page);
+  color: var(--text-primary);
+}

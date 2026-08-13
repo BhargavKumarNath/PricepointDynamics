@@ -126,6 +126,23 @@ class ApiConfig(BaseModel):
     predict_rate_limit: str
 
 
+class WebArtifactsConfig(BaseModel):
+    """Destinations for the precomputed frontend artifacts (project_refactor.md
+    §25.3). `json_dir` mirrors production's `frontend/public/data/` (small,
+    committed JSON); `parquet_dir` mirrors what production uploads to
+    Cloudflare R2 (the two larger Parquet artifacts) -- both resolve to
+    local paths under `frontend/public/` so the Next.js app can read
+    either one directly in local dev without needing real R2 credentials;
+    a deployed build points `NEXT_PUBLIC_PARQUET_BASE_URL` at the real R2
+    bucket URL instead of this local directory.
+    """
+
+    json_dir: Path
+    parquet_dir: Path
+
+    _resolve_dirs = field_validator("json_dir", "parquet_dir", mode="after")(_resolve_path)
+
+
 class Settings(BaseSettings):
     """Application settings loaded from config.yaml, overridable via env vars."""
 
@@ -147,6 +164,7 @@ class Settings(BaseSettings):
     benchmarking: BenchmarkingConfig
     logging: LoggingConfig
     api: ApiConfig
+    web_artifacts: WebArtifactsConfig
 
     @classmethod
     def settings_customise_sources(
