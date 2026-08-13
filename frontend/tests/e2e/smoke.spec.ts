@@ -55,9 +55,19 @@ test.describe("Basket Analysis page", () => {
 });
 
 test.describe("Market Dynamics page", () => {
-  test("shows dispersion trend and leadership list", async ({ page }) => {
+  test("shows the competitiveness index and dispersion trend", async ({ page }) => {
     await page.goto("/market-dynamics");
-    await expect(page.getByText("Latest market dispersion")).toBeVisible();
+    await expect(page.getByText("Competitiveness index", { exact: true })).toBeVisible();
+    await expect(page.getByText("Primary mover")).toBeVisible();
+  });
+
+  test("leadership matrix and its list view both show real leader/follower data", async ({ page }) => {
+    await page.goto("/market-dynamics");
+    // The matrix is the primary visual -- at least one populated cell (e.g. "4d") should be visible.
+    await expect(page.getByRole("button", { name: /leads .* by \d+ days/ }).first()).toBeVisible();
+
+    // The deduplicated list view is a collapsed <details> disclosure by default.
+    await page.getByText("View as list").click();
     await expect(page.getByText("leads").first()).toBeVisible();
   });
 });

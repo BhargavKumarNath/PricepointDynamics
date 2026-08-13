@@ -1,7 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { formatGBP } from "@/lib/format";
+import { type ValueFormat, formatByKind } from "@/lib/format";
 
 export interface SimpleBarDatum {
   name: string;
@@ -9,26 +9,17 @@ export interface SimpleBarDatum {
   color: string;
 }
 
-// A named format kind, not a function prop -- functions can't cross the
-// Server -> Client Component boundary (this chart is rendered from
-// Server Component pages), so formatting is resolved here instead.
-export type ValueFormat = "currency" | "number";
-
 interface SimpleBarChartProps {
   data: SimpleBarDatum[];
   format?: ValueFormat;
   yAxisWidth?: number;
 }
 
-function formatValue(value: number, format: ValueFormat): string {
-  return format === "currency" ? formatGBP(value) : value.toLocaleString("en-GB");
-}
-
 /** Single-series categorical bar chart -- one color per category (identity),
  * mark spec per the dataviz skill: capped bar thickness, rounded data-end,
  * hairline recessive gridlines, value at the tip. */
 export function SimpleBarChart({ data, format = "number", yAxisWidth = 48 }: SimpleBarChartProps) {
-  const fmt = (value: number) => formatValue(value, format);
+  const fmt = (value: number) => formatByKind(value, format);
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>

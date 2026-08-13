@@ -47,7 +47,7 @@ export function ContributionChart({ data }: ContributionChartProps) {
           labelStyle={{ color: "var(--text-primary)" }}
           formatter={(value) => Number(value).toFixed(4)}
         />
-        <Bar dataKey="shapValue" name="SHAP impact" radius={[0, 4, 4, 0]} maxBarSize={18}>
+        <Bar dataKey="shapValue" name="Impact on this prediction (£)" radius={[0, 4, 4, 0]} maxBarSize={18}>
           {data.map((entry) => (
             <Cell key={entry.feature} fill={entry.shapValue >= 0 ? POSITIVE_COLOR : NEGATIVE_COLOR} />
           ))}

@@ -1,5 +1,8 @@
+import { BentoGrid } from "@/components/BentoGrid";
+import { GlassCard } from "@/components/GlassCard";
+import { InfoTooltip } from "@/components/InfoTooltip";
+import { MetricCard } from "@/components/MetricCard";
 import { ShapExplorerClient } from "@/components/ShapExplorerClient";
-import { StatTile } from "@/components/StatTile";
 import { loadHomeMetrics, loadShapExplorerMeta } from "@/lib/artifacts";
 import { formatCompactNumber, formatGBP } from "@/lib/format";
 
@@ -9,27 +12,53 @@ export default async function ModelInsightsPage() {
   const [metrics, meta] = await Promise.all([loadHomeMetrics(), loadShapExplorerMeta()]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-semibold text-text-primary">Model Insights &amp; Explainable AI (XAI)</h1>
+        <div className="flex items-center justify-center gap-1.5">
+          <h1 className="text-2xl font-semibold text-text-primary">Model Insights</h1>
+          <InfoTooltip label="What is explainable AI?">
+            <p>
+              Most machine learning models are a &ldquo;black box&rdquo; — you see the prediction, not why. This page
+              uses <strong className="text-text-primary">SHAP</strong> (SHapley Additive exPlanations), a technique
+              that shows exactly how much each factor pushed a prediction up or down — like getting an itemised
+              receipt for a forecast, rather than a single number and a shrug.
+            </p>
+          </InfoTooltip>
+        </div>
         <p className="mx-auto mt-2 max-w-2xl text-sm text-text-secondary">
-          This page delves into the &ldquo;brain&rdquo; of the price prediction model. We use SHAP to understand
-          not just what the model predicts, but why.
+          What does the model actually use to predict prices, and why did it predict what it did for one specific
+          product?
         </p>
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-5">
+      <GlassCard>
         <h2 className="mb-1 text-lg font-semibold text-text-primary">Model performance</h2>
         <p className="mb-4 text-sm text-text-secondary">
-          The LightGBM model was trained on {formatCompactNumber(metrics.n_train_rows)} data points and tested on a
-          hold-out set of {formatCompactNumber(metrics.n_test_rows)} records.
+          The model was trained on {formatCompactNumber(metrics.n_train_rows)} data points and tested on a hold-out
+          set of {formatCompactNumber(metrics.n_test_rows)} records it never saw during training.
         </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatTile label="Mean absolute error (MAE)" value={formatGBP(metrics.mae)} help="On average, off by this much." />
-          <StatTile label="Root mean squared error (RMSE)" value={formatGBP(metrics.rmse)} help="Penalizes larger errors more." />
-          <StatTile label="Dataset size" value={formatCompactNumber(metrics.total_records)} help="Total records analysed." />
-        </div>
-      </section>
+        <BentoGrid>
+          <MetricCard
+            span={4}
+            tone="brand"
+            label="Average prediction error"
+            value={formatGBP(metrics.mae)}
+            help="On a typical product, the forecast is within this much of the real price (MAE)."
+          />
+          <MetricCard
+            span={4}
+            label="Error, penalising big misses"
+            value={formatGBP(metrics.rmse)}
+            help="Same idea, but weighted so rare large errors count more (RMSE)."
+          />
+          <MetricCard
+            span={4}
+            label="Dataset size"
+            value={formatCompactNumber(metrics.total_records)}
+            help="Total price records analysed."
+          />
+        </BentoGrid>
+      </GlassCard>
 
       <ShapExplorerClient meta={meta} />
     </div>

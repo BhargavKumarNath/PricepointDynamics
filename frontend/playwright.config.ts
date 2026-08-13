@@ -17,7 +17,14 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npx serve -s out -l 3000",
+    // NOT `-s`/`--single`: that flag puts `serve` in SPA-fallback mode,
+    // which rewrites every unmatched route to `index.html` -- wrong for
+    // a Next.js static export, which produces a genuinely separate HTML
+    // file per route (`market-overview.html`, not `market-overview/index.html`).
+    // With `-s` on, every non-home page in this suite was silently
+    // being served the home page's content (found while debugging 8
+    // false-positive-looking failures that were actually this).
+    command: "npx serve out -l 3000",
     url: "http://localhost:3000",
     reuseExistingServer: true,
     timeout: 30_000,

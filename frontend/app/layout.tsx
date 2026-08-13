@@ -21,7 +21,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-page text-text-primary">
+      {/* No bg-page utility here -- globals.css's `body { background: var(--page-gradient) }`
+          tag-selector rule provides both the base page color and the subtle
+          gradient wash; a `.bg-page` class would out-specificity it and
+          silently flatten the gradient back to a solid color. */}
+      <body className="min-h-full flex flex-col text-text-primary">
         <Nav />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
         <footer className="border-t border-border px-4 py-4 text-center text-xs text-text-muted">

@@ -34,7 +34,7 @@ export function FeatureImportanceChart({ data }: FeatureImportanceChartProps) {
           labelStyle={{ color: "var(--text-primary)" }}
           formatter={(value) => Number(value).toFixed(4)}
         />
-        <Bar dataKey="meanAbsShap" name="mean(|SHAP value|)" fill="var(--series-asda)" maxBarSize={16} radius={[0, 4, 4, 0]} />
+        <Bar dataKey="meanAbsShap" name="Average impact (£)" fill="var(--series-asda)" maxBarSize={16} radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

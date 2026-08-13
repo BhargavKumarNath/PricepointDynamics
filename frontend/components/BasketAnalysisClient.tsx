@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { BentoGrid } from "@/components/BentoGrid";
+import { Callout } from "@/components/Callout";
+import { GlassCard } from "@/components/GlassCard";
+import { InfoTooltip } from "@/components/InfoTooltip";
+import { Meter } from "@/components/Meter";
 import { SimpleBarChart } from "@/components/charts/SimpleBarChart";
 import { supermarketColor, SUPERMARKET_ORDER } from "@/lib/colors";
 import { formatGBP, formatPercent } from "@/lib/format";
@@ -10,15 +15,33 @@ interface BasketAnalysisClientProps {
   baskets: Record<string, BasketDetail>;
 }
 
+function averageCoverage(basket: BasketDetail): number {
+  if (basket.rows.length === 0) return 0;
+  return basket.rows.reduce((sum, row) => sum + row.coverage_pct, 0) / basket.rows.length;
+}
+
 export function BasketAnalysisClient({ baskets }: BasketAnalysisClientProps) {
-  const basketNames = useMemo(() => Object.keys(baskets).sort(), [baskets]);
+  // Default to the best-coverage basket, not alphabetically-first --
+  // a low-coverage basket as the very first thing a visitor sees reads
+  // as "this is broken" rather than "matching is naturally partial".
+  const basketNames = useMemo(
+    () => Object.keys(baskets).sort((a, b) => averageCoverage(baskets[b]) - averageCoverage(baskets[a])),
+    [baskets],
+  );
   const [selected, setSelected] = useState(basketNames[0]);
   const [showItems, setShowItems] = useState(false);
   const basket = baskets[selected];
 
-  const chartData = [...basket.rows]
-    .sort((a, b) => a.basket_cost - b.basket_cost)
-    .map((row) => ({ name: row.supermarket, value: row.basket_cost, color: supermarketColor(row.supermarket) }));
+  const sortedRows = [...basket.rows].sort((a, b) => a.basket_cost - b.basket_cost);
+  const chartData = sortedRows.map((row) => ({
+    name: row.supermarket,
+    value: row.basket_cost,
+    color: supermarketColor(row.supermarket),
+  }));
+
+  const cheapest = sortedRows[0];
+  const priciest = sortedRows[sortedRows.length - 1];
+  const savingsPct = priciest && cheapest ? ((priciest.basket_cost - cheapest.basket_cost) / priciest.basket_cost) * 100 : 0;
 
   // canonical_name -> supermarket -> price, for the item-level grid
   const itemGrid = useMemo(() => {
@@ -37,7 +60,7 @@ export function BasketAnalysisClient({ baskets }: BasketAnalysisClientProps) {
         <select
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          className="w-full max-w-sm rounded border border-border bg-surface px-3 py-2 text-text-primary"
+          className="w-full max-w-sm rounded-bento-sm border border-glass-border bg-glass-surface px-3 py-2 text-text-primary backdrop-blur-glass-sm"
         >
           {basketNames.map((name) => (
             <option key={name} value={name}>
@@ -47,15 +70,50 @@ export function BasketAnalysisClient({ baskets }: BasketAnalysisClientProps) {
         </select>
       </label>
 
-      <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="mb-4 text-sm font-medium text-text-secondary">Cost of &lsquo;{selected}&rsquo; basket</h3>
-        <SimpleBarChart data={chartData} format="currency" />
-      </div>
+      <BentoGrid>
+        <GlassCard span={7}>
+          <h3 className="mb-4 text-sm font-medium text-text-secondary">Cost of &lsquo;{selected}&rsquo; basket</h3>
+          <SimpleBarChart data={chartData} format="currency" />
+          {cheapest && priciest && cheapest.supermarket !== priciest.supermarket && (
+            <div className="mt-4">
+              <Callout>
+                {`${selected} is cheapest at ${cheapest.supermarket} (${formatGBP(cheapest.basket_cost)}), ${savingsPct.toFixed(
+                  0,
+                )}% below the most expensive option (${priciest.supermarket}).`}
+              </Callout>
+            </div>
+          )}
+        </GlassCard>
 
-      <div className="rounded-lg border border-border bg-surface p-5">
+        <GlassCard span={5}>
+          <div className="mb-4 flex items-center gap-1.5">
+            <h3 className="text-sm font-medium text-text-secondary">Coverage</h3>
+            <InfoTooltip label="Why isn't coverage 100%?" align="end">
+              <p>
+                Coverage reflects how many of this basket&apos;s items an automated product-matching model could
+                confidently link to a listing at that retailer. Not every store stocks every specific item, and some
+                products don&apos;t have a confident match yet — partial coverage is expected, not a data error.
+              </p>
+            </InfoTooltip>
+          </div>
+          <div className="space-y-4">
+            {sortedRows.map((row) => (
+              <Meter
+                key={row.supermarket}
+                label={row.supermarket}
+                value={row.coverage_pct}
+                color={supermarketColor(row.supermarket)}
+                valueLabel={`${row.items_found} / ${basket.total_items} (${formatPercent(row.coverage_pct)})`}
+              />
+            ))}
+          </div>
+        </GlassCard>
+      </BentoGrid>
+
+      <GlassCard variant="flat">
         <h3 className="mb-1 text-sm font-medium text-text-secondary">Detailed basket breakdown</h3>
         <p className="mb-4 text-xs text-text-secondary">
-          Total cost, items found, and coverage of the {basket.total_items}-item basket at each supermarket.
+          Total cost and items found for the {basket.total_items}-item basket at each supermarket.
         </p>
         <table className="w-full text-sm">
           <thead>
@@ -63,27 +121,23 @@ export function BasketAnalysisClient({ baskets }: BasketAnalysisClientProps) {
               <th className="py-2 font-normal">Supermarket</th>
               <th className="py-2 text-right font-normal">Total cost</th>
               <th className="py-2 text-right font-normal">Items found</th>
-              <th className="py-2 text-right font-normal">Coverage</th>
             </tr>
           </thead>
           <tbody>
-            {[...basket.rows]
-              .sort((a, b) => a.basket_cost - b.basket_cost)
-              .map((row) => (
-                <tr key={row.supermarket} className="border-b border-border last:border-0">
-                  <td className="py-2 text-text-primary">{row.supermarket}</td>
-                  <td className="py-2 text-right text-text-primary">{formatGBP(row.basket_cost)}</td>
-                  <td className="py-2 text-right text-text-secondary">
-                    {row.items_found} / {basket.total_items}
-                  </td>
-                  <td className="py-2 text-right text-text-secondary">{formatPercent(row.coverage_pct)}</td>
-                </tr>
-              ))}
+            {sortedRows.map((row) => (
+              <tr key={row.supermarket} className="border-b border-border last:border-0">
+                <td className="py-2 text-text-primary">{row.supermarket}</td>
+                <td className="py-2 text-right text-text-primary">{formatGBP(row.basket_cost)}</td>
+                <td className="py-2 text-right text-text-secondary">
+                  {row.items_found} / {basket.total_items}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
-      </div>
+      </GlassCard>
 
-      <div className="rounded-lg border border-border bg-surface p-5">
+      <GlassCard variant="flat">
         <button
           type="button"
           onClick={() => setShowItems((v) => !v)}
@@ -125,7 +179,7 @@ export function BasketAnalysisClient({ baskets }: BasketAnalysisClientProps) {
             </table>
           </div>
         )}
-      </div>
+      </GlassCard>
     </div>
   );
 }

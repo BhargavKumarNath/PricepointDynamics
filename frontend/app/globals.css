@@ -36,6 +36,37 @@
      pair, so this never reads as "which retailer" on an unrelated chart. */
   --diverging-positive: #e34948;
   --diverging-negative: #2a78d6;
+
+  /* Brand accent -- categorical slot 7 (violet), the one hue in this
+     palette never assigned to a retailer, status, or diverging role.
+     Validated via scripts/validate_palette.js alongside the 5 retailer
+     hexes (both modes pass; violet is not among the light-mode
+     contrast WARNs). Used for primary actions, active nav, focus
+     rings, and page-chrome glow -- never as a data mark, except the
+     one deliberate --color-model-output exception on the Predictor
+     page (see below). */
+  --brand: #4a3aa7;
+  --brand-soft: rgba(74, 58, 167, 0.08);
+  --brand-strong: rgba(74, 58, 167, 0.22);
+
+  /* Glassmorphism -- card chrome only, never a chart plot surface. */
+  --glass-bg: rgba(252, 252, 251, 0.62);
+  --glass-bg-strong: rgba(252, 252, 251, 0.84);
+  --glass-border: rgba(11, 11, 11, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.55);
+  --glass-blur: 18px;
+  --glass-blur-sm: 10px;
+  --shadow-glass: 0 1px 2px rgba(11, 11, 11, 0.04), 0 10px 28px -10px rgba(11, 11, 11, 0.14);
+  --glow-brand: 0 0 0 1px rgba(74, 58, 167, 0.22), 0 0 22px rgba(74, 58, 167, 0.12);
+
+  /* Subtle gradient wash -- page background only, never inside a
+     chart's plot area (would distort perceived data-mark color). */
+  --page-gradient: radial-gradient(circle at 12% -8%, rgba(74, 58, 167, 0.05), transparent 42%),
+    radial-gradient(circle at 88% 0%, rgba(42, 120, 214, 0.04), transparent 38%), var(--page);
+
+  --radius-bento-lg: 24px;
+  --radius-bento: 18px;
+  --radius-bento-sm: 12px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,6 +89,21 @@
 
     --diverging-positive: #e66767;
     --diverging-negative: #3987e5;
+
+    --brand: #9085e9;
+    --brand-soft: rgba(144, 133, 233, 0.14);
+    --brand-strong: rgba(144, 133, 233, 0.3);
+
+    --glass-bg: rgba(26, 26, 25, 0.55);
+    --glass-bg-strong: rgba(26, 26, 25, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-highlight: rgba(255, 255, 255, 0.06);
+    --shadow-glass: 0 1px 2px rgba(0, 0, 0, 0.35), 0 14px 34px -10px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.02);
+    --glow-brand: 0 0 0 1px rgba(144, 133, 233, 0.35), 0 0 26px rgba(144, 133, 233, 0.22);
+
+    --page-gradient: radial-gradient(circle at 12% -8%, rgba(144, 133, 233, 0.09), transparent 42%),
+      radial-gradient(circle at 88% 0%, rgba(57, 135, 229, 0.07), transparent 38%), var(--page);
   }
 }
 
@@ -77,11 +123,27 @@
   --color-status-critical: var(--status-critical);
   --color-diverging-positive: var(--diverging-positive);
   --color-diverging-negative: var(--diverging-negative);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-strong: var(--brand-strong);
+  --color-glass-surface: var(--glass-bg);
+  --color-glass-surface-strong: var(--glass-bg-strong);
+  --color-glass-border: var(--glass-border);
+  /* Same hex as --brand, distinct semantic name -- reserved for the
+     Predictor page's single predicted-price marker, the one deliberate,
+     named exception to "brand color never appears as a data mark"
+     (UI_refactor.md §Design System Foundation). */
+  --color-model-output: var(--brand);
+  --blur-glass: var(--glass-blur);
+  --blur-glass-sm: var(--glass-blur-sm);
+  --radius-bento-lg: var(--radius-bento-lg);
+  --radius-bento: var(--radius-bento);
+  --radius-bento-sm: var(--radius-bento-sm);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--page);
+  background: var(--page-gradient);
   color: var(--text-primary);
 }

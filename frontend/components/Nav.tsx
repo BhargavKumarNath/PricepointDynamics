@@ -16,7 +16,7 @@ export function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="border-b border-border bg-surface">
+    <nav className="sticky top-0 z-30 border-b border-glass-border bg-glass-surface-strong backdrop-blur-glass">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1 px-4 py-3">
         <span className="mr-4 font-semibold text-text-primary">PricePoint Dynamics</span>
         {LINKS.map((link) => {
@@ -25,8 +25,8 @@ export function Nav() {
             <Link
               key={link.href}
               href={link.href}
-              className={`rounded px-3 py-1.5 text-sm transition-colors ${
-                active ? "bg-text-primary text-page" : "text-text-secondary hover:text-text-primary"
+              className={`rounded-bento-sm px-3 py-1.5 text-sm transition-colors ${
+                active ? "bg-brand text-page" : "text-text-secondary hover:text-text-primary hover:bg-brand-soft"
               }`}
             >
               {link.label}

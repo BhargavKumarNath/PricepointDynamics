@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, predictPrice, type PredictResponse } from "@/lib/api";
+import { BentoGrid } from "@/components/BentoGrid";
+import { GlassCard } from "@/components/GlassCard";
+import { MetricCard } from "@/components/MetricCard";
+import { TargetIcon } from "@/components/icons";
+import { PriceHistoryChart } from "@/components/charts/PriceHistoryChart";
+import { ApiError, getProductHistory, predictPrice, type ProductHistoryResponse, type PredictResponse } from "@/lib/api";
+import { humanizeFeature } from "@/lib/featureLabels";
 import { loadPredictorContext, type PredictorContextRow } from "@/lib/parquet";
 import { formatGBP } from "@/lib/format";
 
@@ -11,6 +17,7 @@ import { formatGBP } from "@/lib/format";
 const COLD_START_HINT_MS = 3000;
 
 type LoadState = "loading" | "ready" | "error";
+type HistoryState = "idle" | "loading" | "ready" | "error";
 
 export function PredictorClient() {
   const [context, setContext] = useState<PredictorContextRow[]>([]);
@@ -24,6 +31,9 @@ export function PredictorClient() {
   const [predicting, setPredicting] = useState(false);
   const [showColdStartHint, setShowColdStartHint] = useState(false);
   const coldStartTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [history, setHistory] = useState<ProductHistoryResponse | null>(null);
+  const [historyState, setHistoryState] = useState<HistoryState>("idle");
 
   useEffect(() => {
     loadPredictorContext()
@@ -62,7 +72,37 @@ export function PredictorClient() {
     setSelectedStore(null);
     setResult(null);
     setPredictError(null);
+    setHistory(null);
+    setHistoryState("idle");
   }
+
+  // The synchronous "we're now loading" state reset belongs in the event
+  // handler that causes it, not in the effect that performs the fetch --
+  // avoids a cascading synchronous setState directly in the effect body.
+  function selectStore(store: string | null) {
+    setSelectedStore(store);
+    setResult(null);
+    setHistory(null);
+    setHistoryState(store ? "loading" : "idle");
+  }
+
+  useEffect(() => {
+    if (!selectedProduct || !selectedStore) return;
+    let cancelled = false;
+    getProductHistory(selectedProduct, selectedStore)
+      .then((res) => {
+        if (cancelled) return;
+        setHistory(res);
+        setHistoryState("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHistoryState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProduct, selectedStore]);
 
   async function handlePredict() {
     if (!selectedRow) return;
@@ -96,16 +136,25 @@ export function PredictorClient() {
     return <p className="text-sm text-text-secondary">Loading product catalogue…</p>;
   }
   if (loadState === "error") {
-    return (
-      <p className="text-sm text-status-critical">
-        Could not load the product catalogue. Refresh to try again.
-      </p>
-    );
+    return <p className="text-sm text-status-critical">Could not load the product catalogue. Refresh to try again.</p>;
   }
 
+  const chartHistory =
+    history?.history.map((h) => ({
+      date: h.date,
+      avgPrice: h.avg_price,
+      minPrice: h.min_price,
+      maxPrice: h.max_price,
+    })) ?? [];
+
+  const predictedPoint = result ? { date: result.requested_date, price: result.predicted_price } : null;
+
+  const lastKnownPrice = history?.history[history.history.length - 1]?.avg_price ?? null;
+  const delta = result && lastKnownPrice != null ? result.predicted_price - lastKnownPrice : null;
+
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-surface p-5">
+    <BentoGrid>
+      <GlassCard span={5} className="h-fit">
         <label className="block text-sm">
           <span className="mb-1 block text-text-secondary">Search for a product</span>
           <input
@@ -116,19 +165,21 @@ export function PredictorClient() {
               setSelectedProduct(null);
               setSelectedStore(null);
               setResult(null);
+              setHistory(null);
+              setHistoryState("idle");
             }}
             placeholder="e.g. 6 sweet creamy bananas"
-            className="w-full rounded border border-border bg-surface px-3 py-2 text-text-primary"
+            className="w-full rounded-bento-sm border border-glass-border bg-glass-surface px-3 py-2 text-text-primary backdrop-blur-glass-sm"
           />
         </label>
         {matches.length > 0 && !selectedProduct && (
-          <ul className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded border border-border">
+          <ul className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-bento-sm border border-glass-border">
             {matches.map((name) => (
               <li key={name}>
                 <button
                   type="button"
                   onClick={() => selectProduct(name)}
-                  className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-page"
+                  className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-brand-soft"
                 >
                   {name}
                 </button>
@@ -143,11 +194,8 @@ export function PredictorClient() {
               <span className="mb-1 block text-text-secondary">Supermarket</span>
               <select
                 value={selectedStore ?? ""}
-                onChange={(e) => {
-                  setSelectedStore(e.target.value || null);
-                  setResult(null);
-                }}
-                className="w-full max-w-xs rounded border border-border bg-surface px-3 py-2 text-text-primary"
+                onChange={(e) => selectStore(e.target.value || null)}
+                className="w-full max-w-xs rounded-bento-sm border border-glass-border bg-glass-surface px-3 py-2 text-text-primary backdrop-blur-glass-sm"
               >
                 <option value="">Choose a store…</option>
                 {storesForProduct.map((row) => (
@@ -176,7 +224,7 @@ export function PredictorClient() {
                 value={priceOverride}
                 onChange={(e) => setPriceOverride(e.target.value)}
                 placeholder={selectedRow?.price_lag_1d != null ? formatGBP(selectedRow.price_lag_1d) : "£"}
-                className="w-full max-w-xs rounded border border-border bg-surface px-3 py-2 text-text-primary"
+                className="w-full max-w-xs rounded-bento-sm border border-glass-border bg-glass-surface px-3 py-2 text-text-primary backdrop-blur-glass-sm"
               />
             </label>
 
@@ -184,7 +232,7 @@ export function PredictorClient() {
               type="button"
               disabled={!selectedRow || predicting}
               onClick={handlePredict}
-              className="rounded bg-text-primary px-4 py-2 text-sm font-medium text-page disabled:opacity-50"
+              className="rounded-bento-sm bg-brand px-4 py-2 text-sm font-medium text-page disabled:opacity-50"
             >
               {predicting ? "Predicting…" : "Predict price"}
             </button>
@@ -195,44 +243,81 @@ export function PredictorClient() {
             )}
           </div>
         )}
-      </div>
+      </GlassCard>
 
-      {predictError && (
-        <div className="rounded-lg border border-status-critical/30 bg-surface p-4 text-sm text-status-critical">
-          {predictError}
-        </div>
-      )}
-
-      {result && (
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <div className="text-sm text-text-secondary">Predicted price</div>
-          <div className="mt-1 text-3xl font-semibold text-text-primary">{formatGBP(result.predicted_price)}</div>
-          <dl className="mt-4 grid grid-cols-2 gap-2 text-xs text-text-secondary sm:grid-cols-4">
-            <div>
-              <dt className="text-text-muted">Requested date</dt>
-              <dd className="text-text-primary">{result.requested_date}</dd>
+      <GlassCard span={7}>
+        {!selectedProduct && (
+          <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-3 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand">
+              <TargetIcon size={22} />
             </div>
-            <div>
-              <dt className="text-text-muted">Resolved from</dt>
-              <dd className="text-text-primary">{result.resolved_from_date}</dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">Override applied</dt>
-              <dd className="text-text-primary">{result.price_override_applied ? "Yes" : "No"}</dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">Unresolved features</dt>
-              <dd className="text-text-primary">{result.unresolved_features.length}</dd>
-            </div>
-          </dl>
-          {result.unresolved_features.length > 0 && (
-            <p className="mt-3 text-xs text-text-secondary">
-              No real history was available for: {result.unresolved_features.join(", ")}. LightGBM handles these as
-              missing values natively -- nothing was fabricated or zero-filled.
+            <p className="max-w-xs text-sm text-text-secondary">
+              Search a product on the left to see its price history and get a live prediction.
             </p>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+
+        {selectedProduct && !selectedStore && (
+          <div className="flex h-full min-h-[280px] items-center justify-center text-center text-sm text-text-secondary">
+            Choose a store to load {selectedProduct}&apos;s price history.
+          </div>
+        )}
+
+        {selectedStore && historyState === "loading" && (
+          <div className="flex h-full min-h-[280px] items-center justify-center text-sm text-text-secondary">
+            Loading price history…
+          </div>
+        )}
+
+        {selectedStore && historyState === "error" && (
+          <p className="text-sm text-status-critical">Could not load price history for this product/store.</p>
+        )}
+
+        {selectedStore && historyState === "ready" && (
+          <>
+            <h3 className="mb-4 text-sm font-medium text-text-secondary">
+              Price history at {selectedStore}
+              {result ? " + prediction" : ""}
+            </h3>
+            <PriceHistoryChart history={chartHistory} predicted={predictedPoint} />
+          </>
+        )}
+
+        {predictError && (
+          <div className="mt-4 rounded-bento-sm border border-status-critical/30 bg-status-critical/10 p-4 text-sm text-status-critical">
+            {predictError}
+          </div>
+        )}
+
+        {result && (
+          <div className="mt-4">
+            <BentoGrid columns={6}>
+              <MetricCard
+                span={3}
+                tone="brand"
+                label="Predicted price"
+                value={formatGBP(result.predicted_price)}
+                help={`Resolved from ${result.resolved_from_date}`}
+              />
+              {delta != null && (
+                <MetricCard
+                  span={3}
+                  label="Vs. last known price"
+                  value={`${delta >= 0 ? "+" : ""}${formatGBP(delta)}`}
+                  help={lastKnownPrice != null ? `Last known: ${formatGBP(lastKnownPrice)}` : undefined}
+                />
+              )}
+            </BentoGrid>
+            {result.unresolved_features.length > 0 && (
+              <p className="mt-3 text-xs text-text-secondary">
+                Some contextual signals weren&apos;t available for this product/date (
+                {result.unresolved_features.map((f) => humanizeFeature(f)).join(", ")}) -- the model handles these
+                as missing values natively, nothing was fabricated or zero-filled.
+              </p>
+            )}
+          </div>
+        )}
+      </GlassCard>
+    </BentoGrid>
   );
 }
