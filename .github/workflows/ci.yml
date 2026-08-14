@@ -89,6 +89,14 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Generate route types
+        # `LayoutProps`/`PageProps` (used in app/layout.tsx and page.tsx
+        # files, per Next.js 16's typed-route helpers) are ambient types
+        # Next.js writes into .next/types/ -- they don't exist in a fresh
+        # checkout, so a bare `tsc --noEmit` fails with "Cannot find name
+        # 'LayoutProps'" until this runs once. `next typegen` generates
+        # just the types, without a full build.
+        run: npx next typegen
       - name: Type-check
         run: npx tsc --noEmit
       - name: Build (static export)
