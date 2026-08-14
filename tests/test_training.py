@@ -125,6 +125,9 @@ class TestTrainingPipeline:
 class _FakeDataConfig:
     def __init__(self, processed_dir):
         self.processed_dir = processed_dir
+        # Only `raw_dir.parent` is actually used (run_reports.default_report_dir,
+        # to derive data/_run_reports/) -- the directory itself need not exist.
+        self.raw_dir = processed_dir.parent / "raw"
 
 
 class _FakeFeaturesConfig:

@@ -1,0 +1,58 @@
+site_name: PricePoint Dynamics
+site_description: UK supermarket competitive intelligence pipeline — ingestion, semantic product matching, feature engineering, price prediction, and market analysis.
+repo_url: https://github.com/BhargavKumarNath/PricepointDynamics
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - content.code.copy
+    - toc.follow
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Data pipeline: data_pipeline.md
+  - API: api.md
+  - Development: development.md
+  - Deployment: deployment.md
+  - Benchmarks: benchmarks.md
+  - Cost verification: cost_verification.md
+  - Architecture Decision Records:
+      - Index: adr/README.md
+      - "0001 — DuckDB not Postgres": adr/0001-duckdb-not-postgres.md
+      - "0002 — Polars for feature engineering": adr/0002-polars-for-feature-engineering.md
+      - "0003 — Reject Dagster": adr/0003-reject-dagster.md
+      - "0004 — Manifest, not DVC": adr/0004-manifest-not-dvc.md
+      - "0005 — Static-first, zero-wait frontend": adr/0005-static-first-zero-wait-frontend.md
+      - "0006 — No target leakage (leave-one-out)": adr/0006-no-target-leakage-leave-one-out.md
+      - "0007 — Bounded-degree mutual-k clustering": adr/0007-bounded-degree-mutual-k-clustering.md
+      - "0018 — Exclude same-row derived features": adr/0018-exclude-same-row-derived-features.md

@@ -130,11 +130,12 @@ def get_git_sha() -> str | None:
         return None
 
 
-def _schema_hash(df: pd.DataFrame) -> str:
+def schema_hash(df: pd.DataFrame) -> str:
     """Stable hash of column names + dtypes.
 
-    Lets two manifests be compared to detect schema drift between pipeline
-    runs without needing a full data diff.
+    Lets two manifests (or a manifest and a run report, see
+    ``run_reports.py``) be compared to detect schema drift between
+    pipeline runs without needing a full data diff.
     """
     schema_repr = "|".join(f"{col}:{dtype}" for col, dtype in sorted(df.dtypes.astype(str).items()))
     return hashlib.sha256(schema_repr.encode("utf-8")).hexdigest()[:16]
@@ -175,7 +176,7 @@ def write_manifest(
         "row_count": len(df),
         "column_count": len(df.columns),
         "columns": list(df.columns),
-        "schema_hash": _schema_hash(df),
+        "schema_hash": schema_hash(df),
         "source_files": [str(p) for p in source_files],
         "git_sha": get_git_sha(),
         "generated_at": datetime.now(UTC).isoformat(),

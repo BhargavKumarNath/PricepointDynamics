@@ -5,6 +5,13 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        # mkdocs.yml uses `!!python/name:...` (a mkdocs-specific YAML
+        # extension for pymdownx.superfences' Mermaid fence config,
+        # loaded via mkdocs' own custom SafeLoader) -- plain PyYAML
+        # (what this hook uses) can't parse that tag. `mkdocs build
+        # --strict` is the real validator for this file; excluded here
+        # to avoid a false-positive block on every commit.
+        exclude: ^mkdocs\.yml$
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files

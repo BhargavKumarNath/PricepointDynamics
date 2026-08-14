@@ -65,6 +65,13 @@ dev = [
 kaggle = [
     "kaggle",
 ]
+# Only needed to build/serve the docs/ site locally (`mkdocs serve`) or in
+# the docs-deploy CI job -- kept out of the main dependency list for the
+# same reason as the kaggle extra above. Install with
+# `uv sync --extra docs` or `pip install -e ".[docs]"`.
+docs = [
+    "mkdocs-material",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pricepoint"]

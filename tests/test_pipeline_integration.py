@@ -31,6 +31,7 @@ from pricepoint.config import Settings, load_settings
 from pricepoint.data_ingestion import run_ingestion
 from pricepoint.feature_engineering import run_feature_engineering
 from pricepoint.product_matching import run_matching
+from pricepoint.run_reports import default_report_dir
 from pricepoint.training import run_training
 
 FIXTURE_CSV = Path(__file__).parent / "fixtures" / "sample_raw.csv"
@@ -186,6 +187,23 @@ class TestPipelineIntegration:
         assert "MAE" in metrics and "RMSE" in metrics
         assert metrics["n_train_rows"] > 0
         assert metrics["n_test_rows"] > 0
+
+        # --- Run reports (project_refactor.md §14) --------------------------
+        # One JSON report per stage, written to data/_run_reports/ alongside
+        # the manifests checked above -- the actual data-quality artifact
+        # this project's observability strategy calls for.
+        report_dir = default_report_dir(settings)
+        reports_by_stage = {}
+        for report_path in report_dir.glob("*.json"):
+            report = json.loads(report_path.read_text())
+            reports_by_stage[report["stage"]] = report
+
+        assert set(reports_by_stage) == {"ingestion", "product_matching", "feature_engineering", "training"}
+        assert reports_by_stage["ingestion"]["rows_in"] == 127
+        assert reports_by_stage["ingestion"]["rows_out"] == 126
+        assert reports_by_stage["training"]["mae"] == pytest.approx(metrics["MAE"])
+        for report in reports_by_stage.values():
+            assert report["duration_seconds"] > 0
 
     def test_second_run_skips_unchanged_stages(self, settings: Settings) -> None:
         """The manifest-based skip-if-unchanged behaviour (established in

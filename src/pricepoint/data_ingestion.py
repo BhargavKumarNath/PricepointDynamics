@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -24,6 +25,7 @@ import polars as pl
 from pricepoint.config import Settings
 from pricepoint.manifest import has_sources_changed, write_manifest
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
+from pricepoint.run_reports import default_report_dir, write_run_report
 from pricepoint.schemas import RAW_DATA_SCHEMA
 
 logger = logging.getLogger(__name__)
@@ -219,7 +221,9 @@ def run_ingestion(settings: Settings, force: bool = False) -> Path:
         logger.info("Raw source files unchanged since last run; skipping ingestion. Output: %s", output_path)
         return output_path
 
+    start_time = time.perf_counter()
     pl_df = load_raw_csvs(settings)
+    rows_in = len(pl_df)
     pl_df = clean_raw_data(pl_df)
 
     df = pl_df.to_pandas()
@@ -246,6 +250,13 @@ def run_ingestion(settings: Settings, force: bool = False) -> Path:
     logger.info("Ingestion complete. Output: %s", output_path)
 
     write_manifest(output_path, df, source_files, stage="ingestion")
+    write_run_report(
+        "ingestion",
+        default_report_dir(settings),
+        rows_in=rows_in,
+        df_out=df,
+        duration_seconds=time.perf_counter() - start_time,
+    )
 
     del df
     collect_garbage()

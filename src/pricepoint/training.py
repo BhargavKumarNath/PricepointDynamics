@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from pricepoint.config import Settings
 from pricepoint.manifest import get_git_sha
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
+from pricepoint.run_reports import default_report_dir, write_run_report
 
 logger = logging.getLogger(__name__)
 
@@ -287,8 +289,10 @@ def run_training(settings: Settings) -> Path:
     if not feature_path.exists():
         raise FileNotFoundError(f"Feature data not found at {feature_path}. Run feature engineering first.")
 
+    start_time = time.perf_counter()
     logger.info("Loading feature data from %s …", feature_path)
     df = pd.read_parquet(feature_path, engine="pyarrow")
+    rows_in = len(df)
     downcast_dtypes(df)
     log_memory("after loading feature data")
 
@@ -327,5 +331,20 @@ def run_training(settings: Settings) -> Path:
     logger.info("Wrote metrics to %s", metrics_path)
 
     logger.info("Training pipeline complete. MAE=£%.2f, RMSE=£%.2f", metrics["MAE"], metrics["RMSE"])
+
+    # df_out is X_train here, not the full loaded feature frame (already
+    # released above) -- rows_out therefore means "rows actually used for
+    # training" (post NaN-drop/time-split), a more useful signal than the
+    # raw load count. Test-set size and the run's own metrics are folded
+    # in via `extra` since they're already computed and directly relevant
+    # to spotting a training regression, not just a row-count one.
+    write_run_report(
+        "training",
+        default_report_dir(settings),
+        rows_in=rows_in,
+        df_out=X_train,
+        duration_seconds=time.perf_counter() - start_time,
+        extra={"test_rows": len(X_test), "mae": metrics["MAE"], "rmse": metrics["RMSE"]},
+    )
 
     return model_path

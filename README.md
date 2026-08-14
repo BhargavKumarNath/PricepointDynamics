@@ -1,173 +1,271 @@
 # PricePoint Dynamics: UK Supermarket Competitive Intelligence
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/BhargavKumarNath/PricePoint-Dynamics-Decoding-the-UK-Supermarket-Competitive-Landscape-with-Machine-Learning/actions/workflows/ci.yml/badge.svg)](https://github.com/BhargavKumarNath/PricePoint-Dynamics-Decoding-the-UK-Supermarket-Competitive-Landscape-with-Machine-Learning/actions)
+[![CI](https://github.com/BhargavKumarNath/PricepointDynamics/actions/workflows/ci.yml/badge.svg)](https://github.com/BhargavKumarNath/PricepointDynamics/actions)
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js-black.svg)](https://nextjs.org/)
 [![LightGBM](https://img.shields.io/badge/Model-LightGBM-9cf.svg)](https://lightgbm.readthedocs.io/)
 [![SHAP](https://img.shields.io/badge/Explainability-SHAP-orange.svg)](https://shap.readthedocs.io/)
 [![FAISS](https://img.shields.io/badge/Vector%20Search-FAISS-blue.svg)](https://faiss.ai/)
 [![Sentence-BERT](https://img.shields.io/badge/NLP-Sentence--BERT-green.svg)](https://www.sbert.net/)
+[![DuckDB](https://img.shields.io/badge/Analytics-DuckDB-FFF000.svg)](https://duckdb.org/)
+[![Polars](https://img.shields.io/badge/Data-Polars-CD792C.svg)](https://pola.rs/)
 [![Pandera](https://img.shields.io/badge/Validation-Pandera-blueviolet.svg)](https://pandera.readthedocs.io/)
 [![Pytest](https://img.shields.io/badge/Testing-Pytest-red.svg)](https://pytest.org/)
 [![Data: 9.5M rows](https://img.shields.io/badge/Data-9.5M%20rows-informational.svg)](#)
 
-
-<a href="https://pricepoint.streamlit.app/" target="_blank">
-  <img src="https://static.streamlit.io/badges/streamlit_badge_black_white.svg" alt="Open in Streamlit"/>
-</a>
-
-
 ## 📖 Executive Summary
-PricePoint Dynamics is an end to end Machine Learning pipeline and analytics engine designed to decode the pricing strategies of the "Big 5" UK supermarkets: **Tesco, Sainsbury's, ASDA, Morrisons, and Aldi**.
 
-Moving beyond basic web scraping, this project employs advanced Natural Language Processing (NLP) to solve the complex "product matching problem" across competing retailers. It utilizes Gradient Boosting (`LightGBM`) to forecast daily prices with high precision (MAE: £0.14) and leverages Explainable AI (`SHAP`) to deconstruct the drivers of price volatility.
+PricePoint Dynamics is an end-to-end machine learning pipeline and
+analytics engine that decodes the pricing strategies of the "Big 5" UK
+supermarkets: **Tesco, Sainsbury's, ASDA, Morrisons, and Aldi**, from
+9,529,216 daily price records (791MB raw CSV).
 
-Originally prototyped in notebooks, this repository has been thoroughly refactored into a **robust, production-ready Python package**. It features a configuration-driven architecture, rigorous data validation (`Pandera`), a command-line interface (`Typer`), and an automated CI/CD pipeline.
+It solves the "product matching problem" across competing retailers using
+Sentence-BERT + FAISS semantic clustering (68,596 canonical products
+identified), trains a LightGBM regressor to forecast daily prices
+(**MAE: £0.15**), and uses SHAP to explain what drives each prediction.
+
+Originally prototyped in notebooks, this repository has been fully
+refactored into a **production-shaped system**: a typed, tested,
+`src/`-layout Python package; a narrow FastAPI service for the one thing
+that genuinely needs live compute; a statically-exported Next.js
+dashboard for everything that doesn't; DuckDB for analytics; and a CI
+pipeline that gates every layer. `project_refactor.md` is the living plan
+and progress log behind this refactor; `docs/` (also published as a
+browsable site, see below) is the polished, reader-facing write-up of the
+same system.
+
+**📚 [Full documentation](docs/index.md)** — architecture, API reference,
+development guide, deployment guide, and 8 Architecture Decision Records
+covering the real bugs found and fixed along the way (target leakage,
+non-transitive product matching, and more).
 
 ---
 
 ## 🏗️ System Architecture
 
-![System Architecture](system_design.svg)
+The system is three layers, each independently deployable:
 
-The system is decoupled into two primary environments: the **Core ML Pipeline** (for heavy data processing) and the **Serving Layer** (interactive dashboard).
+1. **The pipeline** (`src/pricepoint/`, CLI: `run.py`) — ingests, cleans,
+   validates, matches, feature-engineers, trains, and precomputes
+   analytics over the full 9.5M-row dataset.
+2. **The API** (`api/`) — a deliberately narrow FastAPI service:
+   `GET /health`, `POST /v1/predict` (the one live-inference call), and
+   `GET /v1/products/{id}/history`. Everything else the dashboard needs
+   is a precomputed static artifact, not a live endpoint — see
+   [ADR-0005](docs/adr/0005-static-first-zero-wait-frontend.md) for why.
+3. **The frontend** (`frontend/`) — a statically-exported Next.js
+   dashboard. 5 of 6 pages read committed JSON/Parquet artifacts at
+   build time with zero backend calls; only the Price Predictor page
+   calls the API, and only on explicit user action.
 
-### 1. The Core ML Pipeline (`src/pricepoint/`)
-A modular Python package executed via the `run.py` CLI. It manages the entire data lifecycle for 9.5 million transaction records:
-
-*   **Ingestion & Validation**: Raw CSVs are ingested, sanitized, and strictly validated against Pandas schemas.
-*   **Semantic Matching**: Uses **Sentence-BERT** (`intfloat/e5-large`) and **FAISS** to map retailer-specific SKUs (e.g., "Tesco Finest Bananas 5pk") to a canonical identity, enabling true "apples-to-apples" grouping.
-*   **Feature Engineering**: Generates 32+ temporal, momentum, and competitive features (e.g., 7-day rolling minimums, price rank vs market average) stored efficiently in Parquet format.
-*   **Predictive Modeling**: Trains a `LightGBM` regressor using time-series cross-validation to predict future prices.
-*   **Market Dynamics & SHAP**: Pre-computes computationally expensive metrics—like the Herfindahl-Hirschman Index (HHI), cross-correlation price leadership, and SHAP value matrices—for instant retrieval.
-
-### 2. The Serving Layer (`dashboard/`)
-A Streamlit application that consumes the artifacts generated by the core pipeline. It is optimized for sub-second page loads and minimal memory footprint using PyArrow backend data structures and Streamlit caching.
-
----
-
-## ☁️ Live Deployment & Limitations
-
-**Live Dashboard:** [https://pricepoint.streamlit.app/](https://pricepoint.streamlit.app/)
-
-The public dashboard is hosted on Streamlit Cloud, which imposes a strict **1 GB RAM limit**. 
-
-To prevent Out-Of-Memory (OOM) crashes while serving 9.5 million rows, the live deployment uses a synchronized **Lite Architecture**:
-*   **The Constraint:** The full `canonical_products` dataset is 722 MB on disk and consumes >1.5 GB when loaded into Pandas memory natively.
-*   **The Lite Dataset:** We use a temporally sampled lightweight dataset (`canonical_products_lite.parquet` - 42 MB). 
-*   **Impact:** The lite dataset preserves **all 78,000+ unique products** and all 5 supermarkets to ensure the Basket Analysis behaves perfectly. It simply samples the time-series points (every 4th day) to keep memory footprint safely under 150 MB using PyArrow.
-
-*Note: For the highest resolution time-series tracking, you must run the full system locally.*
+A legacy Streamlit app (`dashboard/`) from before this refactor is
+retained for reference but is no longer the primary serving layer —
+see `docs/architecture.md` for the full picture and a system diagram.
 
 ---
 
-## 💻 Full System Usage (Running Locally)
+## 💻 Running It Locally
 
-To process the full 9.5 million row dataset and train the models yourself, follow these steps. *(Note: 8GB+ RAM recommended for the full pipeline).*
-
-### 1. Setup Environment
-Dependencies are managed via [`uv`](https://docs.astral.sh/uv/) and a single `pyproject.toml` (no more separate `requirements.txt` files).
+### 1. Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/bhargavkumarnath/pricepoint-dynamics.git
-cd pricepoint-dynamics
-
-# Install uv (https://docs.astral.sh/uv/getting-started/installation/), then:
+git clone https://github.com/BhargavKumarNath/PricepointDynamics.git
+cd PricepointDynamics
 uv sync --all-extras
 ```
 
-`uv sync` creates a `.venv` and installs the pipeline, dashboard, and dev tooling (pytest, ruff, mypy, pre-commit) from the locked `uv.lock`. Prefix commands with `uv run` (e.g. `uv run python run.py ingest`), or activate the venv directly with `source .venv/bin/activate`. A plain `pip install -e ".[dev]"` also works if you'd rather not use `uv`.
+Dependencies are managed via [`uv`](https://docs.astral.sh/uv/) and a
+single `pyproject.toml` (no separate `requirements.txt` files, no
+drifting version pins). `uv sync` installs the pipeline, API, dashboard,
+and dev tooling (pytest, ruff, mypy, pre-commit) from the locked
+`uv.lock`. Prefix commands with `uv run`, or activate the venv directly
+with `source .venv/bin/activate`.
 
-### 2. Run the ML Pipeline (CLI)
-The entire pipeline is orchestrated via the `run.py` Typer CLI. All parameters and file paths are centralized in `config.yaml`.
+Install the pre-commit hook once: `uv run pre-commit install`.
 
-Run the stages in sequential order:
+### 2. Get the data (optional — needed for a real pipeline run)
 
 ```bash
-# 1. Ingest, clean, and validate the raw CSV data
-python run.py ingest
-
-# 2. Run the NLP semantic product matching (FAISS)
-python run.py match
-
-# 3. Generate time-series and competitive features (Parquet creation)
-python run.py features
-
-# 4. Train the LightGBM price prediction model and evaluate MAE
-python run.py train
-
-# 5. Pre-compute SHAP values, HHI, and Price Leadership metrics
-python run.py precompute
-
-# 6. Run the Isolation Forest anomaly detection
-python run.py anomaly
+uv sync --extra kaggle
+uv run python scripts/download_raw_data.py
 ```
 
-### 3. Launch the Dashboard
-Once the pipeline has generated the artifacts in the `data/02_processed/`, `models/`, and metric directories, launch the UI:
+Requires a free Kaggle account + API token. See `docs/development.md`.
+
+### 3. Run the pipeline
+
+```bash
+uv run python run.py ingest        # clean + validate
+uv run python run.py match         # Sentence-BERT + FAISS product matching
+uv run python run.py features      # rolling/lag/competitive features
+uv run python run.py train         # train LightGBM, write metrics.json
+uv run python run.py marts         # materialize DuckDB analytics marts
+uv run python run.py precompute    # SHAP + market dynamics
+uv run python run.py hhi           # Herfindahl-Hirschman Index
+uv run python run.py anomaly       # Isolation Forest anomaly detection
+uv run python run.py web-artifacts # export frontend JSON/Parquet artifacts
+```
+
+Every stage is idempotent — re-running with unchanged inputs is a no-op.
+Full detail in `docs/data_pipeline.md`.
+
+### 4. Run the API
+
+```bash
+uv run uvicorn api.main:app --reload
+```
+
+Interactive docs at `http://localhost:8000/docs`.
+
+### 5. Run the frontend
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+### (Legacy) Run the Streamlit dashboard
 
 ```bash
 streamlit run dashboard/app.py
 ```
 
+Kept for reference; not actively developed against — see
+`docs/architecture.md` for why the frontend/API pair superseded it.
+
 ---
 
 ## 🔬 Technical Highlights
 
-### Rigorous Software Engineering
-*   **Config-Driven:** Zero hardcoded paths or hyper-parameters. Everything is controlled systematically via `config.yaml` using Pydantic validation.
-*   **Data Contracts:** Leveraging `Pandera` to enforce strict schema definitions on incoming data batches, preventing silent failures.
-*   **CI/CD Integration:** Automated unit testing (`pytest`) and linting (`ruff`) executed via GitHub Actions on every pull request.
+### Rigorous software engineering
 
-### The "Apples-to-Apples" Problem (NLP)
-Simple fuzzy matching fails across 127k products (requiring billions of comparisons). We utilized **Sentence-BERT** to extract 768-dimensional semantic vectors and **FAISS** for log-linear similarity searches. This expanded our match rate from 3,000 to over 67,000 identical cross-retailer products.
+- **Config-driven:** zero hardcoded paths or hyperparameters — everything
+  routes through `config.yaml` via `pydantic-settings`, with
+  `PRICEPOINT_<SECTION>__<FIELD>` environment-variable overrides for
+  deployed environments.
+- **Data contracts:** Pandera schemas enforced at every pipeline
+  boundary (raw, canonical, feature-engineered) — a schema violation
+  fails the run loudly, not silently.
+- **Manifests + run reports:** every stage output gets a
+  `<artifact>.manifest.json` (what produced it, schema hash, skip-if-
+  unchanged tracking) and a timestamped
+  `data/_run_reports/<stage>_<timestamp>.json` (rows in/out, null
+  counts, duration) — real observability, not a dashboard tool
+  disproportionate to a solo-maintained pipeline.
+- **CI that actually gates every layer:** 5 GitHub Actions jobs —
+  lint/type-check (`ruff`, `mypy`, covering both `src/pricepoint` and
+  `api/`), unit tests, API contract tests, a full
+  ingest→match→features→train pipeline-integration test against fixture
+  data, and a frontend build + type-check + Playwright e2e job — plus
+  Dependabot on pip/npm/GitHub Actions.
+- **195 tests** (`uv run pytest tests/ --collect-only -q`), run on every
+  push/PR — see `docs/development.md` for how to run each group locally.
 
-### Predictive Modeling & Interpretability
-*   **Algorithm:** LightGBM Regressor. Selected for its native handling of categorical features and extreme training speed.
-*   **Loss Function:** Optimized for Mean Absolute Error (MAE) rather than MSE to reduce extreme sensitivity to raw scraping outliers.
-*   **Performance:** Achieved an MAE of **£0.14** (average prediction error of 14 pence) on a hold-out test set.
-*   **Explainability:** Pre-computed SHAP matrices allow business users to instantly visualize whether "Competitor Pricing" or "Inertia" drove a specific algorithmic prediction.
+### The "apples-to-apples" problem (NLP)
+
+Simple fuzzy matching fails across 100K+ product name variants. This
+project uses Sentence-BERT to extract semantic embeddings and FAISS for
+fast similarity search — but naive similarity-threshold clustering
+**chains unrelated products together** through generic hub phrases at
+this corpus's scale (a real failure mode found and fixed:
+[ADR-0007](docs/adr/0007-bounded-degree-mutual-k-clustering.md)). The fix
+is a bounded-degree mutual-nearest-neighbour graph, which caps how many
+products any single "hub" name can pull into its cluster while still
+resolving genuine multi-hop chains — expanding the match rate from
+~3,000 to 68,596 canonical cross-retailer products.
+
+### Predictive modeling & interpretability
+
+- **Algorithm:** LightGBM, optimized for MAE (robust to raw-scraping
+  outliers, unlike MSE).
+- **No target leakage, by construction:** competitive features
+  (same-day market average, price rank) are computed *leave-one-out* —
+  a row's own price never contributes to its own "market" comparison
+  ([ADR-0006](docs/adr/0006-no-target-leakage-leave-one-out.md)), and a
+  same-row derived rescaling column (`prices_unit`) is explicitly
+  excluded from model input for the same reason
+  ([ADR-0018](docs/adr/0018-exclude-same-row-derived-features.md)).
+- **Train/serve consistency, by construction:** the API's
+  `POST /v1/predict` builds its feature vector via the exact same
+  encoding function training uses, not a hand-maintained second copy —
+  verified byte-identical against a direct `model.predict()` call.
+- **Performance:** MAE **£0.1487**, RMSE £1.2589, R² 0.9652 on 5,151,151
+  train / 444,314 test rows, 42 features (`models/metrics.json` is the
+  live source of truth this number is quoted from).
+- **Explainability:** precomputed SHAP matrices, browsable client-side in
+  the frontend's Model Insights page with no live model call needed —
+  a prediction's exact value is reconstructed from
+  `base_value + sum(shap_values)`.
+
+### Performance work, measured not assumed
+
+- Feature-engineering rolling/lag statistics rewritten on Polars: **~150x**
+  speedup on a 10% sample versus the original pandas
+  `groupby().transform(lambda ...)` pattern
+  ([ADR-0002](docs/adr/0002-polars-for-feature-engineering.md)).
+- CSV ingestion rewritten on Polars: **3x** speedup on the full 791MB raw
+  dataset.
+- Market-overview and basket-cost queries moved from pandas-in-Streamlit
+  to DuckDB over Parquet marts: **4.6x** / **15.7x** speedup
+  ([ADR-0001](docs/adr/0001-duckdb-not-postgres.md)).
+- Full methodology and regenerable numbers in `docs/benchmarks.md`
+  (`make benchmark`).
 
 ---
 
 ## 📊 Key Findings & Market Insights
 
-1.  **The Budget Anchor:** **Aldi** consistently defines the absolute price floor. SHAP analysis proves the `supermarket=Aldi` feature systematically depresses price predictions across all categories.
-2.  **The Mainstream Lockstep:** **Tesco** and **Sainsbury's** operate in near-perfect parallel pricing. Time-series cross-correlation reveals Tesco acts as the standard price leader, with Sainsbury's typically matching price movements with a 14-day temporal lag.
-3.  **The Predictors of Price:** Historical inertia (7-day rolling minimums) is the strongest predictor of tomorrow's price. However, deviation from the daily **Market Average** is a top-3 predictor, demonstrating that retailers algorithmically react to competitor signals rather than pricing in a vacuum.
+1. **The budget anchor:** Aldi consistently defines the absolute price
+   floor — SHAP analysis shows the `supermarket=Aldi` feature
+   systematically depresses price predictions across categories.
+2. **The mainstream lockstep:** Tesco and Sainsbury's price in
+   near-parallel; cross-correlation analysis shows Tesco leading, with
+   Sainsbury's typically following with a measurable lag.
+3. **Predictors of price:** short-horizon rolling price statistics are
+   the strongest predictors, but deviation from the daily market average
+   is consistently a top-tier predictor — retailers algorithmically
+   react to competitor signals, not just their own price history.
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-pricepoint-dynamics/
-├── .github/workflows/          # CI/CD pipelines (Pytest, Ruff, mypy)
-├── dashboard/                  # Streamlit Web Application
-│   ├── app.py                  # Streamlit Entrypoint
-│   ├── data_loader.py          # PyArrow caching and artifact loading
-│   └── pages/                  # Interactive modules (Basket Analysis, etc)
-├── data/                       # Local data storage (Ignored in Git)
-├── models/                     # Serialized LightGBM .joblib models
-├── src/pricepoint/              # Core Python Package (installable, src/-layout)
-│   ├── config.py               # Pydantic-settings configuration loading
-│   ├── schemas.py              # Pandera Data Validation
-│   ├── data_ingestion.py       # Cleaning & Validation
-│   ├── product_matching.py     # Sentence-BERT & FAISS
-│   ├── feature_engineering.py  # Advanced feature synthesis
-│   ├── training.py             # LightGBM pipeline
-│   ├── anomaly.py              # Isolation Forest
-│   └── market_analysis.py      # HHI & SHAP generation
-├── tests/                      # Unit tests (Pytest)
-├── run.py                      # Typer CLI orchestrator
-├── config.yaml                 # Central project configuration
+PricepointDynamics/
+├── .github/workflows/       # CI (5 jobs) + docs-site deploy
+├── api/                      # FastAPI service (routers/schemas/services)
+├── configs/                  # baskets.yaml and other non-pipeline config
+├── dashboard/                 # Legacy Streamlit app (reference only)
+├── docs/                      # Published documentation (docs/index.md, adr/)
+├── frontend/                  # Next.js static-export dashboard
+├── notebooks/                 # Original exploratory analysis
+├── scripts/                   # One-off utilities (data acquisition, benchmarks)
+├── sql/marts/                 # Parameterized DuckDB mart-materialization SQL
+├── src/pricepoint/            # Core pipeline package (installable, src/-layout)
+│   ├── config.py               # pydantic-settings configuration
+│   ├── schemas.py               # Pandera data contracts
+│   ├── data_ingestion.py        # Clean + validate
+│   ├── product_matching.py      # Sentence-BERT + FAISS
+│   ├── feature_engineering.py   # Temporal/competitive/cyclical features
+│   ├── training.py              # LightGBM train + serve-shared encoding
+│   ├── warehouse.py             # DuckDB query layer over the marts
+│   ├── manifest.py              # Artifact provenance sidecars
+│   ├── run_reports.py           # Per-run observability reports
+│   └── market_analysis.py, anomaly.py, marts.py, web_artifacts.py, ...
+├── tests/                     # pytest — unit, API contract, pipeline-integration
+├── run.py                     # Typer CLI orchestrator
+├── config.yaml                 # Central pipeline configuration
+├── mkdocs.yml                  # Documentation site config
 ├── pyproject.toml              # Single dependency source of truth (uv)
 └── uv.lock                     # Locked dependency versions
 ```
 
 ---
 
-*Author: Bhargav Kumar Nath*  
+*Author: Bhargav Kumar Nath*
 *Data Science | ML Engineering | Strategy*

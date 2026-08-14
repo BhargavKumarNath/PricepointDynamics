@@ -7,6 +7,7 @@ canonical product price data.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,7 @@ import polars as pl
 from pricepoint.config import Settings
 from pricepoint.manifest import has_sources_changed, write_manifest
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
+from pricepoint.run_reports import default_report_dir, write_run_report
 from pricepoint.schemas import FEATURE_DATA_SCHEMA
 
 logger = logging.getLogger(__name__)
@@ -221,8 +223,10 @@ def run_feature_engineering(settings: Settings, force: bool = False) -> Path:
         )
         return output_path
 
+    start_time = time.perf_counter()
     logger.info("Loading canonical products from %s …", canonical_path)
     df = pd.read_parquet(canonical_path, engine="pyarrow")
+    rows_in = len(df)
     df["date"] = pd.to_datetime(df["date"])
     downcast_dtypes(df)
     log_memory("after loading canonical products")
@@ -261,6 +265,13 @@ def run_feature_engineering(settings: Settings, force: bool = False) -> Path:
     )
 
     write_manifest(output_path, df, [canonical_path], stage="feature_engineering")
+    write_run_report(
+        "feature_engineering",
+        default_report_dir(settings),
+        rows_in=rows_in,
+        df_out=df,
+        duration_seconds=time.perf_counter() - start_time,
+    )
 
     del df
     collect_garbage()

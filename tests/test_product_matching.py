@@ -231,9 +231,12 @@ class TestClusterBySimilarity:
 
 
 class _FakeDataConfig:
-    def __init__(self, interim_dir, processed_dir):
+    def __init__(self, interim_dir, processed_dir, raw_dir=None):
         self.interim_dir = interim_dir
         self.processed_dir = processed_dir
+        # Only `raw_dir.parent` is actually used (run_reports.default_report_dir,
+        # to derive data/_run_reports/) -- the directory itself need not exist.
+        self.raw_dir = raw_dir if raw_dir is not None else interim_dir.parent / "raw"
 
 
 class _FakeMatchingConfig:

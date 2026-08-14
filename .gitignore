@@ -19,6 +19,13 @@ market_dynamics_precomputed/
 shap_precomputed/
 models/
 
+# Secrets (project_refactor.md §16: credentials go in a gitignored .env,
+# never committed) -- frontend/.gitignore already covers frontend/.env*
+# via its own Next.js-generated rules; this covers the root-level .env.
+.env
+.env.*
+!.env.example
+
 # IDE & Environment
 .idea/
 .venv/
@@ -28,6 +35,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
+
+# mkdocs build output (docs/ is the source; this is the generated site)
+site/
 
 # OS files
 .DS_Store

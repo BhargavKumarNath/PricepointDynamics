@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,7 @@ import pandas as pd
 from pricepoint.config import Settings
 from pricepoint.manifest import has_sources_changed, write_manifest
 from pricepoint.memory_utils import collect_garbage, downcast_dtypes, log_memory
+from pricepoint.run_reports import default_report_dir, write_run_report
 from pricepoint.schemas import CANONICAL_PRODUCTS_SCHEMA
 
 logger = logging.getLogger(__name__)
@@ -333,8 +335,10 @@ def run_matching(settings: Settings, force: bool = False) -> Path:
         logger.info("Interim data unchanged since last run; skipping matching. Output: %s", output_path)
         return output_path
 
+    start_time = time.perf_counter()
     logger.info("Loading interim data from %s …", interim_path)
     df = pd.read_parquet(interim_path, engine="pyarrow")
+    rows_in = len(df)
     downcast_dtypes(df)
 
     df = find_canonical_matches(df, settings)
@@ -351,6 +355,13 @@ def run_matching(settings: Settings, force: bool = False) -> Path:
     logger.info("Product matching complete. Output: %s", output_path)
 
     write_manifest(output_path, df, [interim_path], stage="product_matching")
+    write_run_report(
+        "product_matching",
+        default_report_dir(settings),
+        rows_in=rows_in,
+        df_out=df,
+        duration_seconds=time.perf_counter() - start_time,
+    )
 
     del df
     collect_garbage()
