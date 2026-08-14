@@ -5,18 +5,20 @@ Everything here is cheap to call per-request because the expensive parts
 process level (project_refactor.md §8.3: "a cached model singleton,
 loaded once at startup, not per-request").
 
-Only `GET /health` and `POST /v1/predict` are live endpoints
-(project_refactor.md §25.2 -- the locked, narrowed API surface); nothing
-here touches `Warehouse`/marts or `configs/baskets.yaml`, since the
-endpoints that needed those (products search/history, market
-overview/basket/dynamics/hhi, model card/explain) are superseded by
-precomputed static/R2 artifacts for the dashboard's current scope, not
-live queries.
+Live endpoints: `GET /health`, `POST /v1/predict`, and
+`GET /v1/products/{id}/history` (project_refactor.md §25.2's locked,
+narrowed API surface, plus this one promotion -- UI_refactor.md's
+Predictor page redesign needed a real historical price chart, which
+§25.2 already named as a valid "concrete, plausible second use" trigger
+for bringing this specific endpoint back). Every other endpoint from
+§8.1's original list stays superseded by precomputed static/R2
+artifacts, not live queries.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -27,6 +29,7 @@ from lightgbm import LGBMRegressor
 
 from pricepoint.config import Settings, load_settings
 from pricepoint.exceptions import ArtifactNotFoundError
+from pricepoint.warehouse import Warehouse
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +61,20 @@ def get_model() -> LGBMRegressor:
         )
     logger.info("Loading model from %s …", model_path)
     return joblib.load(model_path)
+
+
+def get_warehouse() -> Generator[Warehouse, None, None]:
+    """A `Warehouse` instance for the duration of one request, closed
+    afterward -- not cached, since a DuckDB connection isn't safely
+    shareable across concurrent requests and there's no persistent
+    in-process cache benefit to reusing one (each query re-reads the
+    same on-disk mart Parquet files regardless)."""
+    settings = get_settings()
+    warehouse = Warehouse(settings.marts.output_dir)
+    try:
+        yield warehouse
+    finally:
+        warehouse.close()
 
 
 @lru_cache(maxsize=1)
@@ -125,6 +142,7 @@ def reset_caches() -> None:
 __all__ = [
     "get_settings",
     "get_model",
+    "get_warehouse",
     "get_feature_data_path",
     "get_date_bounds",
     "reset_caches",

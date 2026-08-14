@@ -1,9 +1,11 @@
 """FastAPI app factory (project_refactor.md §25.2 -- the locked, minimal
-API surface: `GET /health` and `POST /v1/predict` only. §8.1's original
-9-endpoint list is superseded; the other 7 are replaced by precomputed
-static/R2 artifacts for the dashboard's current scope, each with a named
-promotion trigger back to a live endpoint if a specific future feature
-needs it -- see §25.2).
+API surface: `GET /health`, `POST /v1/predict`, and
+`GET /v1/products/{id}/history`. §8.1's original 9-endpoint list is
+superseded; the other 6 are replaced by precomputed static/R2 artifacts
+for the dashboard's current scope, each with a named promotion trigger
+back to a live endpoint if a specific future feature needs it -- history
+was promoted per UI_refactor.md's Predictor page redesign, exactly the
+"arbitrary historical drill-down" trigger §25.2 already named).
 
 Assembles the routers in `api/routers/` behind one app, with:
 - CORS restricted to explicit configured origins, not `*` (§16).
@@ -27,9 +29,10 @@ from starlette.responses import Response
 
 from api.dependencies import get_settings
 from api.rate_limit import limiter
-from api.routers import health, predict
+from api.routers import health, predict, products
 from api.schemas.common import ErrorResponse
 from pricepoint.exceptions import ArtifactNotFoundError, DataValidationError, PricePointError
+from pricepoint.warehouse import MartNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +56,18 @@ def create_app() -> FastAPI:
     app.add_exception_handler(ArtifactNotFoundError, _artifact_not_found_handler)
     app.add_exception_handler(DataValidationError, _data_validation_handler)
     app.add_exception_handler(PricePointError, _pricepoint_error_handler)
+    # Warehouse.MartNotFoundError predates pricepoint.exceptions and extends
+    # FileNotFoundError, not PricePointError -- without this handler it
+    # falls through to an unhandled, unstructured 500 (found and fixed in
+    # Phase 4; matters again now that the history endpoint made Warehouse
+    # reachable from a live route). Same response shape as
+    # ArtifactNotFoundError: a missing mart file is exactly "the thing you
+    # asked for isn't there".
+    app.add_exception_handler(MartNotFoundError, _mart_not_found_handler)
 
     app.include_router(health.router)
     app.include_router(predict.router)
+    app.include_router(products.router)
 
     return app
 
@@ -74,6 +86,16 @@ def _artifact_not_found_handler(request: Request, exc: Exception) -> Response:  
     return JSONResponse(
         status_code=404,
         content=ErrorResponse(detail=exc.message, context=exc.context).model_dump(),
+    )
+
+
+def _mart_not_found_handler(request: Request, exc: Exception) -> Response:  # noqa: ARG001
+    assert isinstance(exc, MartNotFoundError)
+    # Plain FileNotFoundError, not a PricePointError -- no .message/.context
+    # attributes, just the message passed to its constructor.
+    return JSONResponse(
+        status_code=404,
+        content=ErrorResponse(detail=str(exc), context={}).model_dump(),
     )
 
 

@@ -40,4 +40,5 @@ Thumbs.db
 .agent/
 .claude/
 project_refactor.md
+UI_refactor.md
 .gitignore

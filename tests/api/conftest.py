@@ -6,10 +6,11 @@ are gitignored and absent in a fresh CI checkout. All FastAPI
 dependencies are swapped via `app.dependency_overrides`, not by
 monkeypatching paths, so the app under test is the real `api.main.app`.
 
-Only `GET /health` and `POST /v1/predict` are live endpoints
-(project_refactor.md §25.2's locked, narrowed API surface), so these
-fixtures cover exactly what `/v1/predict` needs -- no marts/warehouse/
-baskets fixtures, since nothing in the live API touches those anymore.
+Live endpoints: `GET /health`, `POST /v1/predict`, and
+`GET /v1/products/{id}/history` (project_refactor.md §25.2's locked,
+narrowed API surface, plus the one promotion UI_refactor.md made) -- so
+these fixtures cover both the feature-data path `/v1/predict` needs and
+a small marts fixture for the history endpoint's `Warehouse` dependency.
 """
 
 from __future__ import annotations
@@ -19,9 +20,10 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from api.dependencies import get_date_bounds, get_feature_data_path, get_model, get_settings
+from api.dependencies import get_date_bounds, get_feature_data_path, get_model, get_settings, get_warehouse
 from api.main import app
 from pricepoint.training import prepare_training_data, train_model
+from pricepoint.warehouse import Warehouse
 
 PRODUCTS = ["test bananas", "test bread"]
 STORES = ["TestMart", "OtherMart"]
@@ -85,17 +87,45 @@ def feature_data_path(tmp_path, feature_df):
 
 
 @pytest.fixture
-def client(fixture_model, feature_data_path):
+def marts_dir(tmp_path):
+    """A small fixture `fact_price_daily` mart -- backs the history
+    endpoint's `Warehouse.get_product_history` dependency, mirroring the
+    shape already established in `tests/test_warehouse.py`."""
+    fact_price_daily = pd.DataFrame(
+        {
+            "canonical_name": ["test bananas", "test bananas", "test bread"],
+            "supermarket": ["TestMart", "OtherMart", "TestMart"],
+            "date": pd.to_datetime(["2024-01-09", "2024-01-10", "2024-01-10"]),
+            "avg_price": [1.19, 1.25, 0.85],
+            "min_price": [1.19, 1.25, 0.85],
+            "max_price": [1.19, 1.25, 0.85],
+            "n_listings": [1, 1, 1],
+        }
+    )
+    fact_price_daily.to_parquet(tmp_path / "fact_price_daily.parquet")
+    return tmp_path
+
+
+@pytest.fixture
+def client(fixture_model, feature_data_path, marts_dir):
     real_settings = get_settings()
     real_settings.api.predict_rate_limit = "1000/minute"
 
     min_date = pd.Timestamp("2024-01-01").date()
     max_date = pd.Timestamp("2024-01-20").date()
 
+    def _warehouse():
+        warehouse = Warehouse(marts_dir)
+        try:
+            yield warehouse
+        finally:
+            warehouse.close()
+
     app.dependency_overrides[get_settings] = lambda: real_settings
     app.dependency_overrides[get_model] = lambda: fixture_model
     app.dependency_overrides[get_feature_data_path] = lambda: feature_data_path
     app.dependency_overrides[get_date_bounds] = lambda: (min_date, max_date)
+    app.dependency_overrides[get_warehouse] = _warehouse
 
     try:
         yield TestClient(app, raise_server_exceptions=False)
