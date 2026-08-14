@@ -63,3 +63,28 @@ class TestProductHistory:
         body = r.json()
         assert "detail" in body
         assert "context" in body
+
+    def test_bare_pricepoint_error_returns_structured_500_not_bare_stack_trace(self, client):
+        """A `PricePointError` not caught by any of the more specific
+        handlers (`ArtifactNotFoundError` -> 404, `DataValidationError` ->
+        422) must still fall through to `_pricepoint_error_handler` in
+        `api/main.py` and produce a structured 500 body, not an unhandled
+        exception / bare stack trace leak (project_refactor.md §16). No
+        existing route naturally raises a bare `PricePointError`, so this
+        drives it via a dependency override, same technique as the 404
+        case above."""
+        from api.dependencies import get_warehouse
+        from api.main import app
+        from pricepoint.exceptions import PricePointError
+
+        def _broken_warehouse():
+            raise PricePointError("boom", context={"reason": "simulated failure"})
+            yield  # pragma: no cover -- makes this a generator, never reached
+
+        app.dependency_overrides[get_warehouse] = _broken_warehouse
+        r = client.get("/v1/products/test bananas/history")
+
+        assert r.status_code == 500
+        body = r.json()
+        assert body["detail"] == "boom"
+        assert body["context"] == {"reason": "simulated failure"}

@@ -94,8 +94,50 @@ test.describe("Model Insights page", () => {
   });
 });
 
-test.describe("Price Predictor page (the one live API call)", () => {
-  test("search, select, and predict against the real FastAPI service", async ({ page }) => {
+test.describe("Price Predictor page", () => {
+  // The product search box itself reads a committed static artifact
+  // (predictor_context.parquet), so it needs no mocking. Only the two
+  // live network calls this page makes -- POST /v1/predict and
+  // GET /v1/products/{id}/history -- are mocked below, via page.route(),
+  // so this spec (like every other page in this file) runs in CI against
+  // the static export alone, with no FastAPI backend, trained model, or
+  // marts required (project_refactor.md §13: "minimal Playwright smoke
+  // test against mocked API responses"). Exercising the frontend against
+  // a genuinely live backend is covered separately by manual/local
+  // end-to-end verification, not by CI.
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/v1/products/**/history*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          canonical_name: "mocked product",
+          history: [
+            { date: "2024-01-01", supermarket: "ASDA", avg_price: 1.2, min_price: 1.1, max_price: 1.3, n_listings: 3 },
+            { date: "2024-01-08", supermarket: "ASDA", avg_price: 1.25, min_price: 1.15, max_price: 1.35, n_listings: 3 },
+          ],
+        }),
+      });
+    });
+  });
+
+  test("search, select, and predict against a mocked API", async ({ page }) => {
+    await page.route("**/v1/predict", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          canonical_name: "mocked product",
+          supermarket: "ASDA",
+          requested_date: "2024-01-15",
+          resolved_from_date: "2024-01-15",
+          predicted_price: 1.29,
+          price_override_applied: false,
+          unresolved_features: [],
+        }),
+      });
+    });
+
     await page.goto("/predictor");
     await expect(page.getByPlaceholder("e.g. 6 sweet creamy bananas")).toBeVisible({ timeout: 15_000 });
 
@@ -107,16 +149,29 @@ test.describe("Price Predictor page (the one live API call)", () => {
     await storeSelect.selectOption({ index: 1 });
 
     await page.getByRole("button", { name: "Predict price" }).click();
-    await expect(page.getByText("Predicted price")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/^£\d/).first()).toBeVisible();
+    await expect(page.getByText("Predicted price")).toBeVisible();
+    await expect(page.getByText("£1.29")).toBeVisible();
   });
 
-  test("shows a structured error for an out-of-range date gracefully (via override contract)", async ({ page }) => {
-    // Smoke-level: confirm the error UI path renders text, not a crash,
-    // when the API path is exercised. Full error-path coverage lives in
-    // tests/api/test_predict.py against the real FastAPI service.
+  test("shows the API's structured error message, not a crash", async ({ page }) => {
+    await page.route("**/v1/predict", async (route) => {
+      await route.fulfill({
+        status: 422,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Date is outside the dataset's observed range.", context: {} }),
+      });
+    });
+
     await page.goto("/predictor");
     await expect(page.getByPlaceholder("e.g. 6 sweet creamy bananas")).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator("body")).not.toContainText("Error:");
+    await page.getByPlaceholder("e.g. 6 sweet creamy bananas").fill("banana");
+    await page.getByRole("button", { name: /bananas/i }).first().click();
+
+    const storeSelect = page.getByLabel("Supermarket");
+    await expect(storeSelect).toBeVisible();
+    await storeSelect.selectOption({ index: 1 });
+
+    await page.getByRole("button", { name: "Predict price" }).click();
+    await expect(page.getByText("Date is outside the dataset's observed range.")).toBeVisible();
   });
 });

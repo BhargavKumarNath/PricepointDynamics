@@ -1,12 +1,17 @@
 name: CI
 
+# Every job here runs against small fixture data checked into git
+# (tests/fixtures/, tests/api's synthetic in-memory fixtures) -- CI never
+# downloads or processes the full 791MB/9.5M-row dataset
+# (project_refactor.md §13).
+
 on:
   push:
     branches: [main]
   pull_request:
 
 jobs:
-  lint:
+  lint-and-typecheck:
     name: Lint (ruff) & type-check (mypy)
     runs-on: ubuntu-latest
     steps:
@@ -22,7 +27,7 @@ jobs:
       - name: ruff format --check
         run: uv run ruff format --check .
       - name: mypy
-        run: uv run mypy src/pricepoint
+        run: uv run mypy src/pricepoint api
 
   unit-tests:
     name: Unit tests (pytest)
@@ -36,4 +41,66 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
       - name: pytest
-        run: uv run pytest tests/ -v
+        run: uv run pytest tests/ -v --ignore=tests/api --ignore=tests/test_pipeline_integration.py
+
+  api-tests:
+    name: API contract tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: pytest
+        run: uv run pytest tests/api -v
+
+  pipeline-integration-test:
+    name: Pipeline integration test (ingest -> match -> features -> train)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: pytest
+        run: uv run pytest tests/test_pipeline_integration.py -v
+
+  frontend-build:
+    name: Frontend build, type-check & e2e smoke (mocked API)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Build (static export)
+        run: npm run build
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Playwright smoke tests
+        run: npx playwright test
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

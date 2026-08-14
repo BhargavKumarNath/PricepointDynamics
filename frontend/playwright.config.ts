@@ -10,7 +10,10 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   retries: 0,
-  reporter: "list",
+  // "list" alone in local dev; CI additionally writes an HTML report so a
+  // failure can be inspected from the uploaded artifact instead of just
+  // the raw log.
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",

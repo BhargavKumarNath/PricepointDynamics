@@ -1,0 +1,128 @@
+supermarket,prices_(£),prices_unit_(£),unit,names,date,category,own_brand
+ASDA,1.1,2.2,kg,Value Bananas 6 Pack,20240101,fresh_food,True
+ASDA,1.15,2.3,kg,Value Bananas 6 Pack,20240102,fresh_food,True
+ASDA,1.2,2.4,kg,Value Bananas 6 Pack,20240103,fresh_food,True
+ASDA,1.25,2.5,kg,Value Bananas 6 Pack,20240104,fresh_food,True
+ASDA,1.3,2.6,kg,Value Bananas 6 Pack,20240105,fresh_food,True
+ASDA,1.1,2.2,kg,Value Bananas 6 Pack,20240106,fresh_food,True
+ASDA,1.15,2.3,kg,Value Bananas 6 Pack,20240107,fresh_food,True
+ASDA,1.2,2.4,kg,Value Bananas 6 Pack,20240108,fresh_food,True
+ASDA,1.25,2.5,kg,Value Bananas 6 Pack,20240109,fresh_food,True
+ASDA,1.3,2.6,kg,Value Bananas 6 Pack,20240110,fresh_food,True
+ASDA,1.1,2.2,kg,Value Bananas 6 Pack,20240111,fresh_food,True
+ASDA,1.15,2.3,kg,Value Bananas 6 Pack,20240112,fresh_food,True
+ASDA,1.2,2.4,kg,Value Bananas 6 Pack,20240113,fresh_food,True
+ASDA,1.25,2.5,kg,Value Bananas 6 Pack,20240114,fresh_food,True
+ASDA,1.3,2.6,kg,Value Bananas 6 Pack,20240115,fresh_food,True
+ASDA,1.1,2.2,kg,Value Bananas 6 Pack,20240116,fresh_food,True
+ASDA,1.15,2.3,kg,Value Bananas 6 Pack,20240117,fresh_food,True
+ASDA,1.2,2.4,kg,Value Bananas 6 Pack,20240118,fresh_food,True
+ASDA,1.25,2.5,kg,Value Bananas 6 Pack,20240119,fresh_food,True
+ASDA,1.3,2.6,kg,Value Bananas 6 Pack,20240120,fresh_food,True
+ASDA,1.1,2.2,kg,Value Bananas 6 Pack,20240121,fresh_food,True
+ASDA,1.15,2.3,kg,Value Bananas 6 Pack,20240122,fresh_food,True
+ASDA,1.2,2.4,kg,Value Bananas 6 Pack,20240123,fresh_food,True
+ASDA,1.25,2.5,kg,Value Bananas 6 Pack,20240124,fresh_food,True
+ASDA,1.3,2.6,kg,Value Bananas 6 Pack,20240125,fresh_food,True
+Tesco,1.15,2.3,kg,6 Bananas Value Pack,20240101,fresh_food,TRUE
+Tesco,1.2,2.4,kg,6 Bananas Value Pack,20240102,fresh_food,TRUE
+Tesco,1.25,2.5,kg,6 Bananas Value Pack,20240103,fresh_food,TRUE
+Tesco,1.3,2.6,kg,6 Bananas Value Pack,20240104,fresh_food,TRUE
+Tesco,1.35,2.7,kg,6 Bananas Value Pack,20240105,fresh_food,TRUE
+Tesco,1.15,2.3,kg,6 Bananas Value Pack,20240106,fresh_food,TRUE
+Tesco,1.2,2.4,kg,6 Bananas Value Pack,20240107,fresh_food,TRUE
+Tesco,1.25,2.5,kg,6 Bananas Value Pack,20240108,fresh_food,TRUE
+Tesco,1.3,2.6,kg,6 Bananas Value Pack,20240109,fresh_food,TRUE
+Tesco,1.35,2.7,kg,6 Bananas Value Pack,20240110,fresh_food,TRUE
+Tesco,1.15,2.3,kg,6 Bananas Value Pack,20240111,fresh_food,TRUE
+Tesco,1.2,2.4,kg,6 Bananas Value Pack,20240112,fresh_food,TRUE
+Tesco,1.25,2.5,kg,6 Bananas Value Pack,20240113,fresh_food,TRUE
+Tesco,1.3,2.6,kg,6 Bananas Value Pack,20240114,fresh_food,TRUE
+Tesco,1.35,2.7,kg,6 Bananas Value Pack,20240115,fresh_food,TRUE
+Tesco,1.15,2.3,kg,6 Bananas Value Pack,20240116,fresh_food,TRUE
+Tesco,1.2,2.4,kg,6 Bananas Value Pack,20240117,fresh_food,TRUE
+Tesco,1.25,2.5,kg,6 Bananas Value Pack,20240118,fresh_food,TRUE
+Tesco,1.3,2.6,kg,6 Bananas Value Pack,20240119,fresh_food,TRUE
+Tesco,1.35,2.7,kg,6 Bananas Value Pack,20240120,fresh_food,TRUE
+Tesco,1.15,2.3,kg,6 Bananas Value Pack,20240121,fresh_food,TRUE
+Tesco,1.2,2.4,kg,6 Bananas Value Pack,20240122,fresh_food,TRUE
+Tesco,1.25,2.5,kg,6 Bananas Value Pack,20240123,fresh_food,TRUE
+Tesco,1.3,2.6,kg,6 Bananas Value Pack,20240124,fresh_food,TRUE
+Tesco,1.35,2.7,kg,6 Bananas Value Pack,20240125,fresh_food,TRUE
+ASDA,2.4,4.8,kg,Organic Avocado Twin Pack,20240101,fresh_food,False
+ASDA,2.45,4.9,kg,Organic Avocado Twin Pack,20240102,fresh_food,False
+ASDA,2.5,5.0,kg,Organic Avocado Twin Pack,20240103,fresh_food,False
+ASDA,2.55,5.1,kg,Organic Avocado Twin Pack,20240104,fresh_food,False
+ASDA,2.6,5.2,kg,Organic Avocado Twin Pack,20240105,fresh_food,False
+ASDA,2.4,4.8,kg,Organic Avocado Twin Pack,20240106,fresh_food,False
+ASDA,2.45,4.9,kg,Organic Avocado Twin Pack,20240107,fresh_food,False
+ASDA,2.5,5.0,kg,Organic Avocado Twin Pack,20240108,fresh_food,False
+ASDA,2.55,5.1,kg,Organic Avocado Twin Pack,20240109,fresh_food,False
+ASDA,2.6,5.2,kg,Organic Avocado Twin Pack,20240110,fresh_food,False
+ASDA,2.4,4.8,kg,Organic Avocado Twin Pack,20240111,fresh_food,False
+ASDA,2.45,4.9,kg,Organic Avocado Twin Pack,20240112,fresh_food,False
+ASDA,2.5,5.0,kg,Organic Avocado Twin Pack,20240113,fresh_food,False
+ASDA,2.55,5.1,kg,Organic Avocado Twin Pack,20240114,fresh_food,False
+ASDA,2.6,5.2,kg,Organic Avocado Twin Pack,20240115,fresh_food,False
+ASDA,2.4,4.8,kg,Organic Avocado Twin Pack,20240116,fresh_food,False
+ASDA,2.45,4.9,kg,Organic Avocado Twin Pack,20240117,fresh_food,False
+ASDA,2.5,5.0,kg,Organic Avocado Twin Pack,20240118,fresh_food,False
+ASDA,2.55,5.1,kg,Organic Avocado Twin Pack,20240119,fresh_food,False
+ASDA,2.6,5.2,kg,Organic Avocado Twin Pack,20240120,fresh_food,False
+ASDA,2.4,4.8,kg,Organic Avocado Twin Pack,20240121,fresh_food,False
+ASDA,2.45,4.9,kg,Organic Avocado Twin Pack,20240122,fresh_food,False
+ASDA,2.5,5.0,kg,Organic Avocado Twin Pack,20240123,fresh_food,False
+ASDA,2.55,5.1,kg,Organic Avocado Twin Pack,20240124,fresh_food,False
+ASDA,2.6,5.2,kg,Organic Avocado Twin Pack,20240125,fresh_food,False
+Morrisons,2.5,5.0,kg,Organic Avocado Twin Pack,20240101,fresh_food,FALSE
+Morrisons,2.55,5.1,kg,Organic Avocado Twin Pack,20240102,fresh_food,FALSE
+Morrisons,2.6,5.2,kg,Organic Avocado Twin Pack,20240103,fresh_food,FALSE
+Morrisons,2.65,5.3,kg,Organic Avocado Twin Pack,20240104,fresh_food,FALSE
+Morrisons,2.7,5.4,kg,Organic Avocado Twin Pack,20240105,fresh_food,FALSE
+Morrisons,2.5,5.0,kg,Organic Avocado Twin Pack,20240106,fresh_food,FALSE
+Morrisons,2.55,5.1,kg,Organic Avocado Twin Pack,20240107,fresh_food,FALSE
+Morrisons,2.6,5.2,kg,Organic Avocado Twin Pack,20240108,fresh_food,FALSE
+Morrisons,2.65,5.3,kg,Organic Avocado Twin Pack,20240109,fresh_food,FALSE
+Morrisons,2.7,5.4,kg,Organic Avocado Twin Pack,20240110,fresh_food,FALSE
+Morrisons,2.5,5.0,kg,Organic Avocado Twin Pack,20240111,fresh_food,FALSE
+Morrisons,2.55,5.1,kg,Organic Avocado Twin Pack,20240112,fresh_food,FALSE
+Morrisons,2.6,5.2,kg,Organic Avocado Twin Pack,20240113,fresh_food,FALSE
+Morrisons,2.65,5.3,kg,Organic Avocado Twin Pack,20240114,fresh_food,FALSE
+Morrisons,2.7,5.4,kg,Organic Avocado Twin Pack,20240115,fresh_food,FALSE
+Morrisons,2.5,5.0,kg,Organic Avocado Twin Pack,20240116,fresh_food,FALSE
+Morrisons,2.55,5.1,kg,Organic Avocado Twin Pack,20240117,fresh_food,FALSE
+Morrisons,2.6,5.2,kg,Organic Avocado Twin Pack,20240118,fresh_food,FALSE
+Morrisons,2.65,5.3,kg,Organic Avocado Twin Pack,20240119,fresh_food,FALSE
+Morrisons,2.7,5.4,kg,Organic Avocado Twin Pack,20240120,fresh_food,FALSE
+Morrisons,2.5,5.0,kg,Organic Avocado Twin Pack,20240121,fresh_food,FALSE
+Morrisons,2.55,5.1,kg,Organic Avocado Twin Pack,20240122,fresh_food,FALSE
+Morrisons,2.6,5.2,kg,Organic Avocado Twin Pack,20240123,fresh_food,FALSE
+Morrisons,2.65,5.3,kg,Organic Avocado Twin Pack,20240124,fresh_food,FALSE
+Morrisons,2.7,5.4,kg,Organic Avocado Twin Pack,20240125,fresh_food,FALSE
+Sains,1.7,3.4,kg,Finest Chocolate Digestives,20240101,food_cupboard,False
+Sains,1.75,3.5,kg,Finest Chocolate Digestives,20240102,food_cupboard,False
+Sains,1.8,3.6,kg,Finest Chocolate Digestives,20240103,food_cupboard,False
+Sains,1.85,3.7,kg,Finest Chocolate Digestives,20240104,food_cupboard,False
+Sains,1.9,3.8,kg,Finest Chocolate Digestives,20240105,food_cupboard,False
+Sains,1.7,3.4,kg,Finest Chocolate Digestives,20240106,food_cupboard,False
+Sains,1.75,3.5,kg,Finest Chocolate Digestives,20240107,food_cupboard,False
+Sains,1.8,3.6,kg,Finest Chocolate Digestives,20240108,food_cupboard,False
+Sains,1.85,3.7,kg,Finest Chocolate Digestives,20240109,food_cupboard,False
+Sains,1.9,3.8,kg,Finest Chocolate Digestives,20240110,food_cupboard,False
+Sains,1.7,3.4,kg,Finest Chocolate Digestives,20240111,food_cupboard,False
+Sains,1.75,3.5,kg,Finest Chocolate Digestives,20240112,food_cupboard,False
+Sains,1.8,3.6,kg,Finest Chocolate Digestives,20240113,food_cupboard,False
+Sains,1.85,3.7,kg,Finest Chocolate Digestives,20240114,food_cupboard,False
+Sains,1.9,3.8,kg,Finest Chocolate Digestives,20240115,food_cupboard,False
+Sains,1.7,3.4,kg,Finest Chocolate Digestives,20240116,food_cupboard,False
+Sains,1.75,3.5,kg,Finest Chocolate Digestives,20240117,food_cupboard,False
+Sains,1.8,3.6,kg,Finest Chocolate Digestives,20240118,food_cupboard,False
+Sains,1.85,3.7,kg,Finest Chocolate Digestives,20240119,food_cupboard,False
+Sains,1.9,3.8,kg,Finest Chocolate Digestives,20240120,food_cupboard,False
+Sains,1.7,3.4,kg,Finest Chocolate Digestives,20240121,food_cupboard,False
+Sains,1.75,3.5,kg,Finest Chocolate Digestives,20240122,food_cupboard,False
+Sains,1.8,3.6,kg,Finest Chocolate Digestives,20240123,food_cupboard,False
+Sains,1.85,3.7,kg,Finest Chocolate Digestives,20240124,food_cupboard,False
+Sains,1.9,3.8,kg,Finest Chocolate Digestives,20240125,food_cupboard,False
+Aldi,3.0,6.0,kg,,20240115,fresh_food,True
+Aldi,0.0,0.0,kg,Free Sample Item,20240115,fresh_food,False
