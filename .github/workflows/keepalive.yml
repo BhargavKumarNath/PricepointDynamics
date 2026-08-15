@@ -1,0 +1,34 @@
+name: API Keep-Alive
+
+# Pings the deployed Cloud Run API's health check every ~10 minutes to
+# keep it warm under Cloud Run's request-processing-time billing model
+# (docs/deployment.md, project_refactor.md §25.6/§25.9) -- avoids a real
+# cold start on the next genuine user request, at near-zero cost (a
+# `GET /health` request every 10 min is nowhere near Cloud Run's free
+# request quota).
+#
+# Dormant until the `API_HEALTH_URL` repository variable is set
+# (Settings -> Secrets and variables -> Actions -> Variables -> New
+# repository variable, e.g. https://pricepoint-api-xxxxx.a.run.app/health)
+# -- the job intentionally no-ops with a clear message rather than failing
+# CI on every scheduled run before a real deployment exists.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping /health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping deployed API
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+        run: |
+          if [ -z "$API_HEALTH_URL" ]; then
+            echo "API_HEALTH_URL repository variable not set -- nothing deployed yet. Skipping."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 10 "$API_HEALTH_URL"

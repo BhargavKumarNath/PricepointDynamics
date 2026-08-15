@@ -2174,13 +2174,10 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
-    { name = "faiss-cpu" },
     { name = "fastapi" },
-    { name = "gdown" },
     { name = "httpx" },
     { name = "joblib" },
     { name = "lightgbm" },
-    { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
     { name = "pandas", version = "3.0.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
@@ -2193,12 +2190,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "scikit-learn" },
-    { name = "seaborn" },
-    { name = "sentence-transformers" },
-    { name = "shap" },
     { name = "slowapi" },
-    { name = "streamlit" },
-    { name = "streamlit-agraph" },
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -2218,19 +2210,29 @@ docs = [
 kaggle = [
     { name = "kaggle" },
 ]
+pipeline = [
+    { name = "faiss-cpu" },
+    { name = "gdown" },
+    { name = "matplotlib" },
+    { name = "seaborn" },
+    { name = "sentence-transformers" },
+    { name = "shap" },
+    { name = "streamlit" },
+    { name = "streamlit-agraph" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "detect-secrets", marker = "extra == 'dev'" },
     { name = "duckdb" },
-    { name = "faiss-cpu" },
+    { name = "faiss-cpu", marker = "extra == 'pipeline'" },
     { name = "fastapi" },
-    { name = "gdown" },
+    { name = "gdown", marker = "extra == 'pipeline'" },
     { name = "httpx" },
     { name = "joblib" },
     { name = "kaggle", marker = "extra == 'kaggle'" },
     { name = "lightgbm" },
-    { name = "matplotlib" },
+    { name = "matplotlib", marker = "extra == 'pipeline'" },
     { name = "mkdocs-material", marker = "extra == 'docs'" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "numpy", specifier = "<2" },
@@ -2247,17 +2249,17 @@ requires-dist = [
     { name = "requests" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "scikit-learn" },
-    { name = "seaborn" },
-    { name = "sentence-transformers" },
-    { name = "shap" },
+    { name = "seaborn", marker = "extra == 'pipeline'" },
+    { name = "sentence-transformers", marker = "extra == 'pipeline'" },
+    { name = "shap", marker = "extra == 'pipeline'" },
     { name = "slowapi" },
-    { name = "streamlit" },
-    { name = "streamlit-agraph" },
+    { name = "streamlit", marker = "extra == 'pipeline'" },
+    { name = "streamlit-agraph", marker = "extra == 'pipeline'" },
     { name = "typer" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev", "kaggle", "docs"]
+provides-extras = ["dev", "kaggle", "docs", "pipeline"]
 
 [[package]]
 name = "protobuf"

@@ -30,26 +30,31 @@ but it's worth stating plainly rather than glossing over.
 ## API → Google Cloud Run
 
 Chosen over Render specifically for billing model, not raw price — see
-[ADR-0005](adr/0005-static-first-zero-wait-frontend.md). Deploy as a
-container built from the repo root (needs a `Dockerfile`, not yet
-written — the API currently only has a documented local-run path via
-`uvicorn`).
+[ADR-0005](adr/0005-static-first-zero-wait-frontend.md). Deploys as a
+container built from the repo-root `Dockerfile` — deliberately excludes
+the `pipeline` extra (sentence-transformers/faiss/shap/streamlit; see
+`pyproject.toml`), since none of `api/`'s import graph touches them and
+installing them would materially slow cold starts for no runtime benefit.
 
 **Required for a real deployment:**
 - A Google Cloud project with billing enabled (Cloud Run's free tier
   still requires a card on file, even though usage stays within the
   Always Free quota).
 - The trained model artifact and materialized marts baked into the image
-  or mounted at startup (`models/`, `data/03_marts/` are gitignored, not
-  committed).
+  (`models/`, `data/03_marts/` are gitignored, not committed — they must
+  exist on disk wherever the image is built, e.g. via
+  `gcloud run deploy --source .`, which uploads the local build context
+  including these gitignored-but-present directories; `.dockerignore`
+  only excludes what the API never reads at request time).
 - `PRICEPOINT_API__CORS_ORIGINS` set to the real deployed frontend
   origin (a JSON list, e.g. `["https://your-project.vercel.app"]`) —
   never left at the `localhost` defaults in `config.yaml`.
-- A scheduled keep-alive: `GET /health` every ~10 minutes via a GitHub
-  Actions workflow, to keep Cloud Run warm under its
-  request-processing-time billing model (nearly free under this model;
+- The scheduled keep-alive workflow (`.github/workflows/keepalive.yml`,
+  `GET /health` every ~10 minutes) needs the `API_HEALTH_URL` repository
+  variable set to the deployed Cloud Run URL — dormant (no-ops) until
+  then. Nearly free under Cloud Run's request-processing-time billing;
   see `docs/cost_verification.md` for why this specifically doesn't work
-  out cheaply on Render's wall-clock-hour billing instead).
+  out cheaply on Render's wall-clock-hour billing instead.
 
 ## Large artifacts → Cloudflare R2
 

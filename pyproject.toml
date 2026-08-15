@@ -26,19 +26,7 @@ dependencies = [
     "pyarrow",
     "scikit-learn",
     "lightgbm",
-    "shap",
-    "sentence-transformers",
-    "faiss-cpu",
     "requests",
-    # Dashboard (Streamlit) runtime — kept in the same install as the core
-    # pipeline for now since dashboard/ and pricepoint/ are still deployed
-    # together; split into a separate optional group if/when the dashboard
-    # is decoupled from the core package (see project_refactor.md §9).
-    "streamlit",
-    "streamlit-agraph",
-    "matplotlib",
-    "seaborn",
-    "gdown",
     # API (Phase 4) — FastAPI service, api/. httpx is required by
     # starlette's TestClient (not just a test-only convenience), so it's a
     # main dependency, not confined to the dev group.
@@ -71,6 +59,30 @@ kaggle = [
 # `uv sync --extra docs` or `pip install -e ".[docs]"`.
 docs = [
     "mkdocs-material",
+]
+# Everything only needed to *run the offline pipeline stages* (`run.py
+# match`/`precompute`) or the legacy Streamlit dashboard -- never imported
+# by `api/` (verified: api/'s transitive import graph is config, schemas,
+# warehouse, and training's train/serve-shared helpers only, none of which
+# touch these; each is lazily imported inside its one call site in
+# `pricepoint`, e.g. `product_matching.generate_embeddings`,
+# `market_analysis.precompute_shap`). Kept out of the base dependency list
+# so the API's deployed container (docs/deployment.md) doesn't pull in
+# ~1-2GB of torch/sentence-transformers/streamlit for code paths a live
+# request never executes -- directly serves the zero-wait Cloud Run
+# cold-start goal (project_refactor.md §25.4/ADR-0005). Local development
+# still gets all of this by default via `make setup`
+# (`uv sync --all-extras`); only a deliberately minimal install (like the
+# API Docker image) opts out.
+pipeline = [
+    "shap",
+    "sentence-transformers",
+    "faiss-cpu",
+    "streamlit",
+    "streamlit-agraph",
+    "matplotlib",
+    "seaborn",
+    "gdown",
 ]
 
 [tool.hatch.build.targets.wheel]

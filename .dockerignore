@@ -1,0 +1,33 @@
+# The Dockerfile COPYs exactly the paths it needs explicitly (config.yaml,
+# src/pricepoint, api, models, data/03_marts) -- this file exists as a
+# second line of defense against an accidental `COPY . .` pulling in the
+# 791MB raw dataset, .git history, or node_modules.
+.git/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Everything under data/ except the one directory the Dockerfile copies
+# explicitly (00_raw, 01_interim, 02_processed, _run_reports -- ~1GB+ of
+# artifacts a live API request never reads).
+data/00_raw/
+data/01_interim/
+data/02_processed/
+data/03_external/
+data/_run_reports/
+
+frontend/
+node_modules/
+dashboard/
+notebooks/
+tests/
+docs/
+plots/
+scripts/
+.github/
+
+*.md
+!README.md

@@ -42,7 +42,7 @@ site/
 # OS files
 .DS_Store
 Thumbs.db
-
+docs/deployment.md
 # Temporary / scratch files
 *.log
 
