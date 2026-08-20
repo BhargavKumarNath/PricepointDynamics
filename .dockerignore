@@ -1,7 +1,8 @@
 # The Dockerfile COPYs exactly the paths it needs explicitly (config.yaml,
-# src/pricepoint, api, models, data/03_marts) -- this file exists as a
-# second line of defense against an accidental `COPY . .` pulling in the
-# 791MB raw dataset, .git history, or node_modules.
+# src/pricepoint, api, models, data/03_marts,
+# data/02_processed/feature_engineered_data.parquet) -- this file exists
+# as a second line of defense against an accidental `COPY . .` pulling in
+# the 791MB raw dataset, .git history, or node_modules.
 .git/
 .venv/
 __pycache__/
@@ -10,12 +11,16 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# Everything under data/ except the one directory the Dockerfile copies
-# explicitly (00_raw, 01_interim, 02_processed, _run_reports -- ~1GB+ of
-# artifacts a live API request never reads).
+# Everything under data/ except what the Dockerfile copies explicitly:
+# data/03_marts/ (Warehouse/history endpoint) and
+# feature_engineered_data.parquet (predict endpoint's DuckDB
+# predicate-pushdown source) -- the other two files in 02_processed/
+# (canonical_products_e5.parquet, anomalies_flagged.parquet, ~280MB
+# combined) are never read by a live API request.
 data/00_raw/
 data/01_interim/
 data/02_processed/
+!data/02_processed/feature_engineered_data.parquet
 data/03_external/
 data/_run_reports/
 

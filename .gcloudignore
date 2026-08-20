@@ -1,0 +1,50 @@
+# Controls what `gcloud run deploy --source .` uploads as the Cloud Build
+# source bundle. Without this file, gcloud auto-generates one from
+# .gitignore -- which excludes `data/` and `models/` wholesale (correctly,
+# for git). Applied to a Cloud Build upload, that same exclusion silently
+# drops the model artifact and marts the Dockerfile needs to COPY,
+# producing a build failure one step later ("stat models: file does not
+# exist") that looks unrelated to this file entirely. This file exists
+# specifically to stop that inheritance -- everything it doesn't list is
+# uploaded, including the gitignored-but-present models/ and
+# data/03_marts/ the Dockerfile requires.
+#
+# .dockerignore still governs the actual `docker build` context on top of
+# whatever this file lets through -- the two are deliberately kept in
+# sync for the paths that matter (see that file's own comments).
+
+.git/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Everything under data/ except what the Dockerfile actually needs:
+# data/03_marts/ and feature_engineered_data.parquet. The raw/interim
+# files are 1GB+ and irrelevant to the API image.
+#
+# NOTE: unlike .dockerignore, this can't exclude the whole
+# data/02_processed/ directory and then `!`-negate one file back in --
+# gcloudignore follows strict .gitignore semantics, where a negation
+# cannot re-include a file whose parent directory was already excluded
+# (verified: `gcloud meta list-files-for-upload` silently dropped the
+# file with that approach). So the other two files in that directory are
+# excluded individually instead.
+data/00_raw/
+data/01_interim/
+data/02_processed/canonical_products_e5.parquet
+data/02_processed/canonical_products_e5.parquet.manifest.json
+data/02_processed/anomalies_flagged.parquet
+data/03_external/
+data/_run_reports/
+
+frontend/
+dashboard/
+notebooks/
+tests/
+docs/
+plots/
+scripts/
+site/

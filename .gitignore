@@ -39,10 +39,13 @@ __pycache__/
 # mkdocs build output (docs/ is the source; this is the generated site)
 site/
 
+# docs/ source itself -- kept local-only, not pushed to GitHub.
+docs/
+
 # OS files
 .DS_Store
 Thumbs.db
-docs/deployment.md
+
 # Temporary / scratch files
 *.log
 
