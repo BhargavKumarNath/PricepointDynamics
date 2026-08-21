@@ -15,7 +15,7 @@ jobs:
     name: Lint (ruff) & type-check (mypy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -33,7 +33,7 @@ jobs:
     name: Unit tests (pytest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -47,7 +47,7 @@ jobs:
     name: API contract tests (pytest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -61,7 +61,7 @@ jobs:
     name: Pipeline integration test (ingest -> match -> features -> train)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -78,7 +78,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Node
         uses: actions/setup-node@v7
         with:
