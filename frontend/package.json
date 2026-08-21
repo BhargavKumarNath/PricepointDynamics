@@ -10,7 +10,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "hyparquet": "^1.28.1",
+    "hyparquet": "^1.28.2",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
