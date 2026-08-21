@@ -31,4 +31,11 @@ jobs:
             echo "API_HEALTH_URL repository variable not set -- nothing deployed yet. Skipping."
             exit 0
           fi
-          curl --fail --silent --show-error --max-time 10 "$API_HEALTH_URL"
+          # 10s was too tight: a genuine Cloud Run cold start (loading
+          # pandas/numpy/lightgbm/duckdb from scratch) can take longer than
+          # that, which made this job fail on exactly the scenario it
+          # exists to prevent (observed: exit 28, curl timeout, 2026-08-21).
+          # --retry handles a single slow-starting instance without
+          # spuriously failing CI; the retry's own request is also what
+          # finishes warming the instance up.
+          curl --fail --silent --show-error --max-time 30 --retry 2 --retry-delay 5 "$API_HEALTH_URL"
