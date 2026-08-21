@@ -2235,7 +2235,7 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'pipeline'" },
     { name = "mkdocs-material", marker = "extra == 'docs'" },
     { name = "mypy", marker = "extra == 'dev'" },
-    { name = "numpy", specifier = "<2" },
+    { name = "numpy", specifier = "<3" },
     { name = "pandas" },
     { name = "pandera" },
     { name = "polars" },
