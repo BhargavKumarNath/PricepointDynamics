@@ -13,7 +13,7 @@ authors = [{ name = "Bhargav Kumar Nath" }]
 
 dependencies = [
     "pandas",
-    "numpy<2",
+    "numpy<3",
     "polars",
     "pyyaml",
     "pydantic>=2.6",
