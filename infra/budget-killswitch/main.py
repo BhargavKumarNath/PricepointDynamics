@@ -43,19 +43,13 @@ def stop_billing(cloud_event) -> None:
         print("under budget — no action")
         return
 
-    credentials, _ = google.auth.default(
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    billing = discovery.build(
-        "cloudbilling", "v1", credentials=credentials, cache_discovery=False
-    )
+    credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    billing = discovery.build("cloudbilling", "v1", credentials=credentials, cache_discovery=False)
 
     info = billing.projects().getBillingInfo(name=PROJECT_NAME).execute()
     if not info.get("billingEnabled"):
         print("billing already disabled — nothing to do")
         return
 
-    billing.projects().updateBillingInfo(
-        name=PROJECT_NAME, body={"billingAccountName": ""}
-    ).execute()
+    billing.projects().updateBillingInfo(name=PROJECT_NAME, body={"billingAccountName": ""}).execute()
     print(f"BILLING DISABLED for {PROJECT_NAME} (cost {cost} > budget {budget})")
