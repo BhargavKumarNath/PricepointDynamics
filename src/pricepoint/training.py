@@ -272,6 +272,75 @@ def evaluate_model(
     return metrics
 
 
+def _point_metrics(y: np.ndarray, preds: np.ndarray) -> dict[str, float]:
+    mae = mean_absolute_error(y, preds)
+    rmse = float(np.sqrt(mean_squared_error(y, preds)))
+    r2 = float(1 - np.sum((y - preds) ** 2) / np.sum((y - y.mean()) ** 2))
+    return {"MAE": round(mae, 4), "RMSE": round(rmse, 4), "R2": round(r2, 4)}
+
+
+def evaluate_naive_baseline(X_test: pd.DataFrame, y_test: pd.Series) -> dict[str, float]:
+    """Score "today's price is the last observed price" on the model's test rows.
+
+    Grocery prices are sticky, so this is the number the model has to beat.
+    ``price_lag_1d`` is the listing's previous observed price (features are
+    past-only, docs/forecast_leak_fix.md), taken from the same ``X_test``
+    rows the model is scored on, so the MAEs are like for like.
+    """
+    preds = X_test["price_lag_1d"].to_numpy(dtype=np.float64)
+    y = y_test.to_numpy(dtype=np.float64)
+    metrics = _point_metrics(y, preds)
+    metrics["share_unchanged"] = round(float(np.mean(preds == y)), 4)
+    logger.info("Naive last-price baseline: %s", metrics)
+    return metrics
+
+
+def cluster_bootstrap_mae(
+    y: np.ndarray,
+    predictions: dict[str, np.ndarray],
+    groups: np.ndarray,
+    n_boot: int = 1_000,
+    seed: int = 42,
+    level: float = 0.95,
+) -> dict[str, dict[str, float]]:
+    """95% intervals on each predictor's MAE, resampling whole groups.
+
+    Days within one listing are correlated, so rows are not independent;
+    resampling listings (with replacement) keeps each listing's days
+    together. Each replicate draws multinomial counts over listings and
+    weights the per-listing absolute-error sums by them, which is exactly a
+    resample-whole-listings bootstrap. The same replicates are used for
+    every predictor, so ``<name>_minus_<other>`` gaps are paired.
+    """
+    codes, uniq = pd.factorize(pd.Series(groups), sort=True)
+    n_groups = len(uniq)
+    counts = np.bincount(codes, minlength=n_groups).astype(np.float64)
+    sums = {name: np.bincount(codes, weights=np.abs(y - p), minlength=n_groups) for name, p in predictions.items()}
+    rng = np.random.default_rng(seed)
+    boots: dict[str, list[np.ndarray]] = {name: [] for name in predictions}
+    remaining = n_boot
+    while remaining:
+        chunk = min(100, remaining)
+        w = rng.multinomial(n_groups, np.full(n_groups, 1.0 / n_groups), size=chunk).astype(np.float64)
+        n_rows = w @ counts
+        for name in predictions:
+            boots[name].append((w @ sums[name]) / n_rows)
+        remaining -= chunk
+    alpha = (1 - level) / 2
+    out: dict[str, dict[str, float]] = {}
+    arrays = {name: np.concatenate(v) for name, v in boots.items()}
+    for name, arr in arrays.items():
+        lo, hi = np.quantile(arr, [alpha, 1 - alpha])
+        out[name] = {"lower": round(float(lo), 4), "upper": round(float(hi), 4)}
+    names = list(arrays)
+    for i, a in enumerate(names):
+        for b in names[i + 1 :]:
+            lo, hi = np.quantile(arrays[a] - arrays[b], [alpha, 1 - alpha])
+            out[f"{a}_minus_{b}"] = {"lower": round(float(lo), 4), "upper": round(float(hi), 4)}
+    out["_meta"] = {"n_boot": n_boot, "seed": seed, "level": level, "n_groups": n_groups}
+    return out
+
+
 def run_training(settings: Settings) -> Path:
     """Execute the full training pipeline.
 
@@ -297,6 +366,10 @@ def run_training(settings: Settings) -> Path:
     log_memory("after loading feature data")
 
     X_train, y_train, X_test, y_test = prepare_training_data(df)
+    # Listing id per test row, for the cluster bootstrap (X_test keeps df's index).
+    test_listing = (
+        df.loc[X_test.index, "supermarket"].astype(str) + "|" + df.loc[X_test.index, "product_name"].astype(str)
+    ).to_numpy()
     # The full feature frame (9.5M rows x 34 columns) is no longer needed
     # once split into X/y -- release it before training, which itself needs
     # substantial memory to build 1000 trees over ~5M rows.
@@ -307,6 +380,20 @@ def run_training(settings: Settings) -> Path:
     model = train_model(X_train, y_train, settings.model.lgbm_params)
     log_memory("after model training")
     metrics = evaluate_model(model, X_test, y_test)
+    naive = evaluate_naive_baseline(X_test, y_test)
+    y_arr = y_test.to_numpy(dtype=np.float64)
+    rolling = _point_metrics(y_arr, X_test["price_rol_mean_7d"].to_numpy(dtype=np.float64))
+    logger.info("Rolling 7-observation mean baseline: %s", rolling)
+    intervals = cluster_bootstrap_mae(
+        y_arr,
+        {
+            "model": model.predict(X_test).astype(np.float64),
+            "naive_last_price": X_test["price_lag_1d"].to_numpy(dtype=np.float64),
+            "rolling_mean_7": X_test["price_rol_mean_7d"].to_numpy(dtype=np.float64),
+        },
+        test_listing,
+    )
+    logger.info("MAE 95%% intervals (cluster bootstrap by listing): %s", intervals)
 
     # Save model
     output_dir = settings.model.output_dir
@@ -319,6 +406,10 @@ def run_training(settings: Settings) -> Path:
     metrics_path = output_dir / "metrics.json"
     metrics_record = {
         **metrics,
+        "naive_last_price": naive,
+        "rolling_mean_7": rolling,
+        "mae_ci95_cluster_bootstrap": intervals,
+        "n_test_listings": int(intervals["_meta"]["n_groups"]),
         "n_train_rows": len(X_train),
         "n_test_rows": len(X_test),
         "n_features": X_train.shape[1],

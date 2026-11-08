@@ -83,6 +83,9 @@ def export_home_metrics(settings: Settings) -> dict[str, Any]:
         "mae": metrics["MAE"],
         "rmse": metrics["RMSE"],
         "r2": metrics["R2"],
+        # The same test rows scored by "predict the last observed price".
+        "naive_mae": metrics["naive_last_price"]["MAE"],
+        "naive_share_unchanged": metrics["naive_last_price"]["share_unchanged"],
         "n_train_rows": metrics["n_train_rows"],
         "n_test_rows": metrics["n_test_rows"],
         "n_features": metrics["n_features"],
@@ -181,7 +184,7 @@ def export_predictor_context(settings: Settings) -> pd.DataFrame:
                 SELECT
                     canonical_name, supermarket, category, date, prices, price_lag_1d,
                     ROW_NUMBER() OVER (
-                        PARTITION BY canonical_name, supermarket ORDER BY date DESC
+                        PARTITION BY canonical_name, supermarket ORDER BY date DESC, product_name
                     ) AS rn
                 FROM read_parquet(?)
             )

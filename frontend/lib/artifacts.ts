@@ -22,6 +22,8 @@ export interface HomeMetrics {
   mae: number;
   rmse: number;
   r2: number;
+  naive_mae: number;
+  naive_share_unchanged: number;
   n_train_rows: number;
   n_test_rows: number;
   n_features: number;

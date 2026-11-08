@@ -53,9 +53,11 @@ export default async function ModelInsightsPage() {
           />
           <MetricCard
             span={4}
-            label="Dataset size"
-            value={formatCompactNumber(metrics.total_records)}
-            help="Total price records analysed."
+            label="Baseline: repeat the last price"
+            value={formatGBP(metrics.naive_mae)}
+            help={`Error from predicting each product's last observed price. ${(
+              metrics.naive_share_unchanged * 100
+            ).toFixed(1)}% of test prices did not change, and the model does not beat this baseline.`}
           />
         </BentoGrid>
       </GlassCard>

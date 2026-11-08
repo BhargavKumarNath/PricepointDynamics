@@ -55,3 +55,6 @@ Thumbs.db
 project_refactor.md
 UI_refactor.md
 .gitignore
+.env.example
+CLAUDE.md
+.vscode/

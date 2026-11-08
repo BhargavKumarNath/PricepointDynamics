@@ -1,5 +1,5 @@
 {
-  "base_value": 5.008144921554212,
+  "base_value": 4.990003997020516,
   "feature_names": [
     "own_brand",
     "price_rol_mean_7d",
@@ -17,6 +17,7 @@
     "price_lag_1d",
     "price_lag_7d",
     "price_diff_1d",
+    "days_since_last_obs",
     "price_vs_market_avg",
     "price_rank",
     "is_cheapest_in_market",
@@ -44,5 +45,5 @@
     "category_household",
     "category_pets"
   ],
-  "n_samples": 4768
+  "n_samples": 4438
 }

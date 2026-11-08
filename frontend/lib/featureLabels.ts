@@ -1,5 +1,5 @@
 /**
- * Human-readable labels for the model's 42 raw ML feature/column names
+ * Human-readable labels for the model's 43 raw ML feature/column names
  * (project_refactor.md UI_refactor.md §Design System Foundation). No raw
  * snake_case name should ever reach rendered UI text after this module
  * is wired in -- consumed by `FeatureImportanceChart`, `ContributionChart`,
@@ -31,28 +31,29 @@ function entry(raw: string, label: string, description: string, group: FeatureGr
 export const FEATURE_LABELS: Record<string, FeatureLabel> = {
   own_brand: entry("own_brand", "Own-brand product", "Whether this is a retailer's own-label product rather than a branded one.", "product_traits"),
 
-  price_rol_mean_7d: entry("price_rol_mean_7d", "7-day average price", "The mean price over the trailing 7 days.", "recent_price_trend"),
-  price_rol_std_7d: entry("price_rol_std_7d", "7-day price volatility", "How much the price fluctuated over the trailing 7 days.", "recent_price_trend"),
-  price_rol_max_7d: entry("price_rol_max_7d", "7-day highest price", "The highest price seen over the trailing 7 days.", "recent_price_trend"),
-  price_rol_min_7d: entry("price_rol_min_7d", "7-day lowest price", "The lowest price seen over the trailing 7 days.", "recent_price_trend"),
+  price_rol_mean_7d: entry("price_rol_mean_7d", "7-day average price", "The mean of the 7 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_std_7d: entry("price_rol_std_7d", "7-day price volatility", "How much the price fluctuated over the 7 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_max_7d: entry("price_rol_max_7d", "7-day highest price", "The highest of the 7 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_min_7d: entry("price_rol_min_7d", "7-day lowest price", "The lowest of the 7 most recent prices before the prediction day.", "recent_price_trend"),
 
-  price_rol_mean_14d: entry("price_rol_mean_14d", "14-day average price", "The mean price over the trailing 14 days.", "recent_price_trend"),
-  price_rol_std_14d: entry("price_rol_std_14d", "14-day price volatility", "How much the price fluctuated over the trailing 14 days.", "recent_price_trend"),
-  price_rol_max_14d: entry("price_rol_max_14d", "14-day highest price", "The highest price seen over the trailing 14 days.", "recent_price_trend"),
-  price_rol_min_14d: entry("price_rol_min_14d", "14-day lowest price", "The lowest price seen over the trailing 14 days.", "recent_price_trend"),
+  price_rol_mean_14d: entry("price_rol_mean_14d", "14-day average price", "The mean of the 14 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_std_14d: entry("price_rol_std_14d", "14-day price volatility", "How much the price fluctuated over the 14 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_max_14d: entry("price_rol_max_14d", "14-day highest price", "The highest of the 14 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_min_14d: entry("price_rol_min_14d", "14-day lowest price", "The lowest of the 14 most recent prices before the prediction day.", "recent_price_trend"),
 
-  price_rol_mean_30d: entry("price_rol_mean_30d", "30-day average price", "The mean price over the trailing 30 days.", "recent_price_trend"),
-  price_rol_std_30d: entry("price_rol_std_30d", "30-day price volatility", "How much the price fluctuated over the trailing 30 days.", "recent_price_trend"),
-  price_rol_max_30d: entry("price_rol_max_30d", "30-day highest price", "The highest price seen over the trailing 30 days.", "recent_price_trend"),
-  price_rol_min_30d: entry("price_rol_min_30d", "30-day lowest price", "The lowest price seen over the trailing 30 days.", "recent_price_trend"),
+  price_rol_mean_30d: entry("price_rol_mean_30d", "30-day average price", "The mean of the 30 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_std_30d: entry("price_rol_std_30d", "30-day price volatility", "How much the price fluctuated over the 30 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_max_30d: entry("price_rol_max_30d", "30-day highest price", "The highest of the 30 most recent prices before the prediction day.", "recent_price_trend"),
+  price_rol_min_30d: entry("price_rol_min_30d", "30-day lowest price", "The lowest of the 30 most recent prices before the prediction day.", "recent_price_trend"),
 
-  price_lag_1d: entry("price_lag_1d", "Yesterday's price", "The price recorded one day before the prediction date.", "recent_price_trend"),
-  price_lag_7d: entry("price_lag_7d", "Price one week ago", "The price recorded seven days before the prediction date.", "recent_price_trend"),
-  price_diff_1d: entry("price_diff_1d", "Day-over-day price change", "How much the price moved since the previous day.", "recent_price_trend"),
+  price_lag_1d: entry("price_lag_1d", "Yesterday's price", "The most recent price recorded before the prediction date (usually the day before).", "recent_price_trend"),
+  price_lag_7d: entry("price_lag_7d", "Price one week ago", "The price recorded seven observations before the prediction date.", "recent_price_trend"),
+  price_diff_1d: entry("price_diff_1d", "Most recent price change", "How much the price moved between the two most recent observations before the prediction date.", "recent_price_trend"),
+  days_since_last_obs: entry("days_since_last_obs", "Days since last price", "Calendar days between the prediction date and the most recent recorded price.", "recent_price_trend"),
 
-  price_vs_market_avg: entry("price_vs_market_avg", "Price vs. market average", "How this product's price compares to the average across all 5 retailers.", "market_position"),
-  price_rank: entry("price_rank", "Price rank among retailers", "Where this retailer's price for the product ranks (1 = cheapest) among the 5.", "market_position"),
-  is_cheapest_in_market: entry("is_cheapest_in_market", "Is the cheapest option", "Whether this retailer currently has the lowest price for the product.", "market_position"),
+  price_vs_market_avg: entry("price_vs_market_avg", "Price vs. market average", "How this product's most recent price compares to the other retailers' most recent prices.", "market_position"),
+  price_rank: entry("price_rank", "Price rank among retailers", "Where this retailer's most recent price ranks (1 = cheapest) against the other retailers' most recent prices.", "market_position"),
+  is_cheapest_in_market: entry("is_cheapest_in_market", "Is the cheapest option", "Whether this retailer had the lowest most recent price for the product.", "market_position"),
 
   day_of_week_sin: entry("day_of_week_sin", "Day-of-week pattern", "Encodes which day of the week it is, so the model can learn weekly pricing patterns.", "calendar_day_of_week"),
   day_of_week_cos: entry("day_of_week_cos", "Day-of-week pattern", "Encodes which day of the week it is, so the model can learn weekly pricing patterns.", "calendar_day_of_week"),
@@ -84,7 +85,7 @@ export const FEATURE_LABELS: Record<string, FeatureLabel> = {
 
 /** Human label for a raw feature name, falling back to a title-cased
  * version of the raw name itself if it's ever missing from the
- * dictionary above (should not happen for the 42 known columns, but a
+ * dictionary above (should not happen for the 43 known columns, but a
  * safety net beats a raw snake_case string leaking through). */
 export function humanizeFeature(raw: string): string {
   const known = FEATURE_LABELS[raw];

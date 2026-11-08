@@ -103,6 +103,7 @@ def full_settings(tmp_path, marts_dir, baskets) -> _FakeSettings:
                 "MAE": 0.15,
                 "RMSE": 1.25,
                 "R2": 0.96,
+                "naive_last_price": {"MAE": 0.02, "share_unchanged": 0.98},
                 "n_train_rows": 100,
                 "n_test_rows": 20,
                 "n_features": 5,
@@ -134,6 +135,7 @@ def full_settings(tmp_path, marts_dir, baskets) -> _FakeSettings:
     pd.DataFrame(
         {
             "canonical_name": ["bananas", "bananas", "milk"],
+            "product_name": ["Tesco Bananas 5pk", "Tesco Bananas 5pk", "ASDA Milk 1L"],
             "supermarket": ["Tesco", "Tesco", "ASDA"],
             "category": ["fresh_food", "fresh_food", "fresh_food"],
             "date": pd.to_datetime(["2024-01-09", "2024-01-10", "2024-01-10"]),
@@ -163,6 +165,8 @@ class TestExportHomeMetrics:
         assert result["total_records"] == 12345
         assert result["canonical_products"] == 2
         assert result["mae"] == 0.15
+        assert result["naive_mae"] == 0.02
+        assert result["naive_share_unchanged"] == 0.98
 
     def test_missing_metrics_raises(self, tmp_path):
         settings = _FakeSettings(tmp_path)

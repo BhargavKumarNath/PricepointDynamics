@@ -36,7 +36,9 @@ def _resolve_feature_row(
             """
             SELECT * FROM read_parquet(?)
             WHERE canonical_name = ? AND supermarket = ? AND date <= ?
-            ORDER BY date DESC
+            -- Several listings (pack sizes) can share a canonical name at one
+            -- retailer; product_name makes the choice deterministic.
+            ORDER BY date DESC, product_name
             LIMIT 1
             """,
             [str(feature_data_path), canonical_name, supermarket, as_of_date],

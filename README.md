@@ -101,6 +101,10 @@ One of the model's features is meant to capture "how does this product's price c
 
 The fix is to compute that market average leave-one-out: exclude a row's own price before averaging the rest. Same idea applies to `prices_unit`, a per-unit rescaling of the row's own price (essentially £/kg) that I found was near-constant within about 82% of product groups - close enough to the target that including it as a feature would have been almost the same as leaking the answer directly. Both are excluded now, and both have a named ADR ([0006](docs/adr/0006-no-target-leakage-leave-one-out.md), [0018](docs/adr/0018-exclude-same-row-derived-features.md)) explaining why, because "obviously don't leak the target" is easy to say and surprisingly easy to get subtly wrong in practice.
 
+It went wrong anyway. A later audit (November 2026) found the features still contained the answer: `price_diff_1d` was today's price minus the previous row's, so `price_lag_1d + price_diff_1d` equalled the target on 100% of test rows; every rolling mean, min and max included the current day's price; and series were keyed on `(canonical_name, supermarket)`, which merges different pack sizes: 41.5% of rows shared their (product, retailer, date) with another listing, so "the previous row" was often a different pack size on the same day. The old leakage test only checked the same-day market average, so none of this was caught. The reported MAE of £0.1487 was a reconstruction error, not a forecast error.
+
+The rebuild ([docs/forecast_leak_fix.md](docs/forecast_leak_fix.md), written before re-running anything) keys each series on a single listing, `(supermarket, product_name)`, and computes every feature from that listing's observations *before* the target day: lags, rolling statistics over the previous 7/14/30 observations, the most recent price move, days since the last observation, and market position from other retailers' previous prices. `tests/data_contracts/test_no_target_leakage.py` now adds 5 to every price on the last day and asserts that no feature on that day changes, which is the general check that would have caught the original leak.
+
 ### Train/Serve Consistency
 
 The old dashboard's predictor fabricated most of its inputs, as mentioned above. The structural fix isn't "be more careful filling in values" - it's to make sure there's only one function that builds a feature vector, used both at training time and at prediction time. `training.py::build_feature_vector` is that function; the API calls it directly rather than reimplementing the same logic. I checked this by comparing the API's output against a direct `model.predict()` call on the same identically-resolved data, byte for byte. It's a small design choice, but it's the one that makes the old bug structurally impossible to reintroduce, rather than just less likely.
@@ -164,17 +168,23 @@ Running the whole thing - Vercel for the frontend, Cloud Run for the API - costs
 
 ### Model Performance
 
-MAE £0.1487, RMSE £1.2589, R² 0.9652, on 444,314 held-out test rows (the final 7 days, held out chronologically rather than randomly, since this is time-series data and a random split would leak future information into training). 42 features, LightGBM trained directly on MAE as the objective, which matters here because raw scraped retail prices have real outliers and MAE doesn't let a handful of them dominate the loss the way squared error would.
+The headline is that the model **does not beat the naive forecast**. Scored once on the held-out final 7 days (440,618 rows from 66,548 listings), after rebuilding the features without leakage:
 
-£0.15 average error doesn't mean much on its own, so here's the context: the median price across this dataset sits around £1.50–£3.00 depending on retailer, so an average miss of 15p is roughly a 5–10% error on a typical item. That's a reasonable number for next-day price forecasting, but I want to be upfront about why R² comes out as high as 0.965 rather than treat it as an unqualified win: grocery prices are sticky. On most days, for most products, tomorrow's price is just today's price. A model that leans heavily on yesterday's price and the last week's rolling average is going to look very accurate, because it's mostly right for the same reason a naive "predict no change" baseline would also be mostly right. The genuinely interesting question isn't "how low is the error," it's "what is the model actually picking up on beyond that inertia" - which is what the SHAP values below are for.
+| Forecast for each listing's price on day t | MAE | 95% CI | RMSE | R² |
+|---|---|---|---|---|
+| Last observed price (naive) | **£0.0232** | £0.0206 to £0.0260 | £0.7942 | 0.9862 |
+| LightGBM, 43 past-only features | £0.0529 | £0.0455 to £0.0608 | £1.2359 | 0.9666 |
+| Mean of the last 7 observed prices | £0.0716 | £0.0676 to £0.0758 | £0.8745 | 0.9833 |
 
-I also did a manual sanity check against the saved model artifact independent of the training run - reloaded it with `joblib.load()`, ran it against a held-out sample, and spot-checked individual predictions against actual prices (predicted £6.82 against an actual £6.50, predicted £1.12 against an actual £1.20, on a handful of spot-checked rows). Not a substitute for the aggregate metrics, but it's the difference between trusting a number in a JSON file and actually watching the model do something reasonable on a real row.
+The intervals come from a bootstrap that resamples whole listings (1,000 resamples, seed 42), because days within a listing are not independent. The model is worse than the naive forecast by £0.023 to £0.037 per row, and better than the 7-observation mean. Hyperparameters, split and row filter are unchanged from the original run; everything is in `models/metrics.json`.
+
+Why: grocery prices are extremely sticky. 98.55% of test prices were identical to the listing's previous price, so "no change" is almost always exactly right, and any model has to earn its keep on the 1.5% that move. SHAP puts 99.9% of the model's weight on the listing's own price history (68% on the previous price alone) and essentially none on market position, so the model is mostly trying to reproduce the last price, and LightGBM, which splits `price_lag_1d` into at most 255 histogram bins across a £0.05 to £50+ range, cannot output "exactly yesterday's price". A sensible next model would predict the *change* from the last price (or whether the price changes at all) and fall back to the naive forecast. That is a change made after seeing this result, so it would need to be judged on new data, not on this test window.
 
 The honest limitations, stated plainly rather than buried: the training window is 95 days (January–April 2024), so there's no way this model has learned anything about longer seasonal effects like Christmas pricing - it's learned what a fairly stable spring looks like, not a full year. Promotional price drops aren't modeled explicitly; the model just sees them as noise. And retraining is manual right now - `python run.py train` - there's no scheduled job watching for drift. That's a reasonable next addition if this ever needed to run continuously against fresh data rather than as a portfolio piece against a fixed historical scrape.
 
 ### Market Structure Findings
 
-Aldi is the price floor, and it's not subtle - median price across Aldi's catalogue is £1.49, against £3.00 for ASDA and similar-or-higher figures for the other three retailers. SHAP analysis picks this up directly: the model has effectively learned "if this is Aldi, subtract" as one of its strongest signals, which lines up with what the raw price distributions already show. That's reassuring in a specific way - it means the model's most confident behaviour isn't some opaque pattern, it's tracking something you can independently verify by just looking at the data.
+Aldi is the price floor, and it's not subtle - median price across Aldi's catalogue is £1.49, against £3.00 for ASDA and similar-or-higher figures for the other three retailers. That gap is visible directly in the raw price distributions. (Earlier versions of this README said the model's SHAP values had learned "if this is Aldi, subtract"; that came from the leaky model and does not hold for the rebuilt one, which puts essentially no weight on the retailer.)
 
 Tesco and Sainsbury's move together, but not simultaneously - the cross-correlation analysis over their price series shows Tesco consistently leading and Sainsbury's following with a measurable lag, not the other way round. That's the kind of finding that's genuinely hard to get by eyeballing a chart of two retailers' prices over 95 days; it only shows up once you actually run the correlation-at-lag analysis across enough product pairs to see the pattern rather than noise.
 
@@ -233,7 +243,7 @@ uv run uvicorn api.main:app --reload   # http://localhost:8000/docs
 cd frontend && npm ci && npm run dev
 ```
 
-And the test suite - 195 tests across unit, API-contract, and a full pipeline-integration run against fixture data:
+And the test suite - 203 tests across unit, API-contract, and a full pipeline-integration run against fixture data:
 
 ```bash
 uv run pytest tests/ -v

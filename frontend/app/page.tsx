@@ -114,11 +114,11 @@ export default async function HomePage() {
           <MetricCard
             span={4}
             icon={<SparkleIcon size={18} />}
-            label="Price prediction model accuracy"
+            label="Price prediction model error"
             value={formatGBP(metrics.mae)}
-            help={`Average error (MAE) · R² ${metrics.r2.toFixed(3)} · trained on ${formatCompactNumber(
-              metrics.n_train_rows,
-            )} rows`}
+            help={`Average error (MAE). Repeating each product's last price scores ${formatGBP(
+              metrics.naive_mae,
+            )}, so the model does not beat that baseline.`}
           />
         </BentoGrid>
       </div>

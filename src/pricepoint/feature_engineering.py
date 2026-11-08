@@ -1,7 +1,8 @@
 """Feature engineering pipeline.
 
-Computes temporal, momentum, and competitive features from
-canonical product price data.
+Computes lag, rolling, momentum and competitive features for one price
+series per listing. Every feature on day t uses only prices from before
+day t (docs/forecast_leak_fix.md).
 """
 
 from __future__ import annotations
@@ -22,7 +23,32 @@ from pricepoint.schemas import FEATURE_DATA_SCHEMA
 
 logger = logging.getLogger(__name__)
 
-_GROUP_COLS = ["canonical_name", "supermarket"]
+# One price series per listing. canonical_name merges listings (pack sizes)
+# across a product family, so it is only used for cross-retailer market
+# comparisons, never as a series key. See docs/forecast_leak_fix.md.
+_GROUP_COLS = ["supermarket", "product_name"]
+
+# Columns that only describe the target day itself; everything else a row
+# carries must be computable from earlier days.
+_TARGET_COL = "prices"
+
+
+def aggregate_to_listing_day(df: pd.DataFrame) -> pd.DataFrame:
+    """One row per (supermarket, product_name, date).
+
+    The raw scrape is already almost unique at this grain (23,830 exact
+    duplicate rows in 9.5M, 2 with differing prices); duplicates are
+    averaged. Descriptive columns are taken from the first row, since they
+    do not vary within a listing-day.
+    """
+    keys = [*_GROUP_COLS, "date"]
+    descriptive = [c for c in df.columns if c not in keys and c not in (_TARGET_COL, "prices_unit")]
+    agg = {_TARGET_COL: "mean", **{c: "first" for c in descriptive}}
+    if "prices_unit" in df.columns:
+        agg["prices_unit"] = "mean"
+    out = df.groupby(keys, observed=True, sort=False).agg(agg).reset_index()
+    logger.info("Aggregated %s rows to %s listing-days.", f"{len(df):,}", f"{len(out):,}")
+    return out
 
 
 def add_temporal_features(
@@ -30,131 +56,95 @@ def add_temporal_features(
     rolling_windows: list[int],
     lag_days: list[int],
 ) -> pd.DataFrame:
-    """Add rolling statistics and lag features.
+    """Add lag, rolling and momentum features from *earlier* observations only.
 
-    The rolling/lag core is computed in Polars (native, multi-threaded
-    rolling-window expressions) rather than pandas'
-    ``groupby().transform(lambda x: x.rolling(...))`` -- the latter invokes
-    a Python-level lambda once per group per statistic (4 stats x N window
-    sizes separate full passes), which dominates feature-engineering
-    runtime on the full 9.5M-row dataset (project_refactor.md §1/§6/Phase
-    2). The public signature (pandas in, pandas out) is unchanged so
-    callers and existing tests are unaffected; the conversion to pandas
-    happens once, at the end of this function, consistent with the
-    "convert to pandas only at the sklearn/LightGBM/Pandera boundary"
-    principle applied elsewhere in this pipeline.
+    Every feature on the row for day t is computed from the same listing's
+    prices on days before t; the row's own price (the training target) never
+    enters any of them. Concretely, all statistics are taken over the
+    series shifted by one observation:
 
-    Rolling windows are **row-count-based** (the last ``window`` rows
-    within a (canonical_name, supermarket) group, not the last ``window``
-    calendar days) -- this matches the pre-existing pandas
-    ``.rolling(window)`` behaviour exactly (verified: both frameworks
-    default to positional, not time-based, windows), including on groups
-    with gaps in their date sequence.
+    - ``price_lag_{k}d``: the price k observations back
+    - ``price_rol_{stat}_{w}d``: mean/std/max/min of the previous w
+      observations (row-count windows, so a gap in the dates does not
+      shorten the window)
+    - ``price_diff_1d``: previous price minus the one before it (the most
+      recent known move, not today's)
+    - ``days_since_last_obs``: calendar days since the previous observation
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Price data sorted by product and date.
-    rolling_windows : list[int]
-        Window sizes for rolling statistics (e.g., [7, 14, 30]).
-    lag_days : list[int]
-        Lag periods in days (e.g., [1, 7]).
+    Computed in Polars (native rolling expressions per group); pandas in,
+    pandas out.
 
     Returns
     -------
     pd.DataFrame
         Data with new temporal columns, sorted by
-        ``[canonical_name, supermarket, date]`` (matching this function's
-        pre-Polars-rewrite behaviour -- rolling/lag statistics are only
-        meaningful in that row order, so the sort is load-bearing, not
-        incidental).
+        ``[supermarket, product_name, date]`` -- the order the shifted
+        statistics are defined in.
     """
-    logger.info("Adding temporal features (windows=%s, lags=%s) …", rolling_windows, lag_days)
+    logger.info("Adding temporal features (windows=%s, lags=%s), past-only …", rolling_windows, lag_days)
     df = df.sort_values(_GROUP_COLS + ["date"]).reset_index(drop=True)
 
-    pl_prices = pl.from_pandas(df[[*_GROUP_COLS, "prices"]])
+    pl_df = pl.from_pandas(df[[*_GROUP_COLS, "date", _TARGET_COL]])
+    prev = pl.col(_TARGET_COL).shift(1)
 
     exprs: list[pl.Expr] = []
     for window in rolling_windows:
-        exprs.append(
-            pl.col("prices").rolling_mean(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_mean_{window}d")
-        )
-        exprs.append(
-            pl.col("prices").rolling_std(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_std_{window}d")
-        )
-        exprs.append(
-            pl.col("prices").rolling_max(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_max_{window}d")
-        )
-        exprs.append(
-            pl.col("prices").rolling_min(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_min_{window}d")
-        )
+        exprs.append(prev.rolling_mean(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_mean_{window}d"))
+        exprs.append(prev.rolling_std(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_std_{window}d"))
+        exprs.append(prev.rolling_max(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_max_{window}d"))
+        exprs.append(prev.rolling_min(window, min_samples=1).over(_GROUP_COLS).alias(f"price_rol_min_{window}d"))
 
     for lag in lag_days:
-        exprs.append(pl.col("prices").shift(lag).over(_GROUP_COLS).alias(f"price_lag_{lag}d"))
+        exprs.append(pl.col(_TARGET_COL).shift(lag).over(_GROUP_COLS).alias(f"price_lag_{lag}d"))
 
-    # Momentum: daily price change
-    exprs.append(pl.col("prices").diff(1).over(_GROUP_COLS).alias("price_diff_1d"))
+    exprs.append((pl.col(_TARGET_COL).shift(1) - pl.col(_TARGET_COL).shift(2)).over(_GROUP_COLS).alias("price_diff_1d"))
+    exprs.append(
+        (pl.col("date") - pl.col("date").shift(1))
+        .over(_GROUP_COLS)
+        .dt.total_days()
+        .cast(pl.Float64)
+        .alias("days_since_last_obs")
+    )
 
-    new_cols = pl_prices.select(exprs).to_pandas()
+    new_cols = pl_df.select(exprs).to_pandas()
     return pd.concat([df, new_cols], axis=1)
 
 
-def add_competitive_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add cross-retailer competitive context features.
+def add_competitive_features(df: pd.DataFrame, price_col: str = "price_lag_1d") -> pd.DataFrame:
+    """Add cross-retailer market-position features from previous prices.
 
-    All statistics are computed *leave-one-out*: a row's own price is
-    excluded from the same-day, same-product aggregate used to describe
-    "the market" around it. This matters because ``prices`` is the model's
-    training target — a same-day aggregate that includes the row's own
-    price lets the model partially recover its own target from its own
-    inputs (ADR-0006 / ENGINEERING_AUDIT_REPORT.md §1.5).
+    For each (canonical_name, date) group, every row is compared with the
+    *other* rows of the group (leave-one-out), using ``price_col`` -- by
+    default each listing's previous observed price, so nothing here
+    depends on any price on the target day:
 
-    Only the *derived* comparison (``price_vs_market_avg``) is persisted,
-    never the raw market average itself. This is deliberate and separate
-    from the leave-one-out fix: persisting both a raw aggregate and
-    ``price - that aggregate`` as simultaneous features would let the
-    target be reconstructed exactly via simple addition, regardless of how
-    the aggregate is computed. Exposing only the delta closes that door
-    structurally rather than relying on downstream feature selection to
-    catch it.
+    - ``price_vs_market_avg``: own previous price minus the mean previous
+      price of the other listings in the group
+    - ``price_rank``: 1 + the number of other listings with a lower
+      previous price (1 = cheapest)
+    - ``is_cheapest_in_market``: ``price_rank == 1``
 
-    Products sold by only one retailer on a given day have no "market" to
-    compare against — their competitive features are ``NaN`` rather than a
-    vacuous self-comparison (e.g. "rank 1 of 1").
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Price data with canonical_name and date columns.
-
-    Returns
-    -------
-    pd.DataFrame
-        Data with competitive features.
+    Only the delta is persisted, never the market average itself (a raw
+    average plus the delta would reconstruct ``price_col`` exactly). Rows
+    with no other listing to compare against (or no previous price of
+    their own) get ``NaN`` market stats and ``is_cheapest_in_market = 0``.
     """
-    logger.info("Adding competitive features (leave-one-out) …")
+    logger.info("Adding competitive features (leave-one-out on %s) …", price_col)
     df = df.copy()
 
-    group_cols = ["canonical_name", "date"]
-    grp = df.groupby(group_cols, observed=True)["prices"]
-
+    grp = df.groupby(["canonical_name", "date"], observed=True)[price_col]
+    own = df[price_col]
     group_sum = grp.transform("sum")
-    group_count = grp.transform("count")
-    other_count = group_count - 1
-    has_competitors = other_count > 0
+    group_count = grp.transform("count")  # non-null values only
+    other_count = group_count - own.notna().astype(int)
+    has_competitors = own.notna() & (other_count > 0)
 
-    # Leave-one-out market average: (sum of the group minus this row's own
-    # price) / (count of the group minus this row). NaN when there are no
-    # other retailers to compare against.
-    market_avg_others = (group_sum - df["prices"]) / other_count.where(has_competitors)
-    df["price_vs_market_avg"] = df["prices"] - market_avg_others
+    market_avg_others = (group_sum - own.fillna(0)) / other_count.where(has_competitors)
+    df["price_vs_market_avg"] = own - market_avg_others
 
-    # Dense rank of a value relative to the OTHER values in its group is
-    # mathematically identical whether or not the value itself is included
-    # in the comparison set — nothing is ever "less than itself" — so no
-    # separate leave-one-out computation is needed here, only the
-    # single-retailer edge case (no competitors to rank against).
-    df["price_rank"] = grp.rank(method="dense")
+    # rank(method="min") == 1 + count of strictly lower values in the group,
+    # which is the same whether or not the row itself is counted.
+    df["price_rank"] = grp.rank(method="min")
     df.loc[~has_competitors, "price_rank"] = np.nan
 
     df["is_cheapest_in_market"] = (df["price_rank"] == 1).astype(int)
@@ -237,6 +227,7 @@ def run_feature_engineering(settings: Settings, force: bool = False) -> Path:
     # memory around each stage was added after real runs against the full
     # 9.5M-row dataset repeatedly froze a 15 GB development machine -- see
     # project_v2.md Phase 1 Progress Log, 2026-07-02.
+    df = aggregate_to_listing_day(df)
     df = add_temporal_features(df, settings.features.rolling_windows, settings.features.lag_days)
     downcast_dtypes(df)
     log_memory("after temporal features")

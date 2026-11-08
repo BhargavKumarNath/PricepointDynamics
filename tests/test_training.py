@@ -46,6 +46,7 @@ def feature_df() -> pd.DataFrame:
                     "prices": 1.50,
                     "prices_unit": 3.00,  # exactly 2x prices -- the leak this test guards
                     "price_lag_1d": 1.45,
+                    "price_rol_mean_7d": 1.47,
                 }
             )
     return pd.DataFrame(rows)
@@ -185,3 +186,61 @@ class TestRunTrainingArtifacts:
         preds = model.predict(X_test.reindex(columns=model.feature_name_, fill_value=0))
         assert len(preds) == len(X_test)
         assert np.all(np.isfinite(preds))
+
+
+class TestNaiveBaseline:
+    """The "tomorrow equals today" baseline the model's MAE is compared with."""
+
+    def test_scores_price_lag_1d_against_target(self):
+        import pandas as pd
+
+        from pricepoint.training import evaluate_naive_baseline
+
+        X_test = pd.DataFrame({"price_lag_1d": [1.0, 2.0, 3.0, 4.0]})
+        y_test = pd.Series([1.0, 2.5, 3.0, 3.0])
+        out = evaluate_naive_baseline(X_test, y_test)
+        assert out["MAE"] == pytest.approx((0 + 0.5 + 0 + 1.0) / 4)
+        assert out["share_unchanged"] == pytest.approx(0.5)
+
+    def test_perfectly_sticky_prices_give_zero_error(self):
+        import pandas as pd
+
+        from pricepoint.training import evaluate_naive_baseline
+
+        prices = pd.Series([1.5, 2.0, 0.99])
+        out = evaluate_naive_baseline(pd.DataFrame({"price_lag_1d": prices}), prices)
+        assert out["MAE"] == 0.0
+        assert out["share_unchanged"] == 1.0
+
+
+class TestClusterBootstrapMae:
+    """Intervals that resample whole listings, not individual days."""
+
+    def test_interval_brackets_point_mae_and_is_seeded(self):
+        from pricepoint.training import cluster_bootstrap_mae
+
+        rng = np.random.default_rng(0)
+        groups = np.repeat(np.arange(200), 10)
+        y = rng.random(groups.size)
+        preds = {"a": y + rng.normal(0, 0.1, y.size), "b": y + rng.normal(0, 0.3, y.size)}
+        out = cluster_bootstrap_mae(y, preds, groups, n_boot=300, seed=1)
+        assert out == cluster_bootstrap_mae(y, preds, groups, n_boot=300, seed=1)
+        for name, p in preds.items():
+            mae = float(np.mean(np.abs(y - p)))
+            assert out[name]["lower"] <= mae <= out[name]["upper"]
+        assert out["a_minus_b"]["upper"] < 0  # a is clearly better
+        assert out["_meta"]["n_groups"] == 200
+
+    def test_correlated_groups_widen_the_interval(self):
+        """If errors are shared within a listing, resampling listings must give a wider
+        interval than pretending every row is independent would."""
+        from pricepoint.training import cluster_bootstrap_mae
+
+        rng = np.random.default_rng(2)
+        groups = np.repeat(np.arange(100), 50)
+        shared = rng.normal(0, 1, 100)[groups]
+        y = np.zeros(groups.size)
+        p = shared + rng.normal(0, 0.05, groups.size)
+        clustered = cluster_bootstrap_mae(y, {"m": p}, groups, n_boot=400)["m"]
+        rowwise = cluster_bootstrap_mae(y, {"m": p}, np.arange(groups.size), n_boot=400)["m"]
+        assert (clustered["upper"] - clustered["lower"]) > 3 * (rowwise["upper"] - rowwise["lower"])

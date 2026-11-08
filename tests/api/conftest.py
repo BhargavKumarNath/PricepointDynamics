@@ -45,6 +45,7 @@ def feature_df() -> pd.DataFrame:
                 rows.append(
                     {
                         "canonical_name": product,
+                        "product_name": f"{store} {product}",
                         "supermarket": store,
                         "date": d,
                         "prices": price,
